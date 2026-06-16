@@ -1,20 +1,55 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiMessageSquare, FiThumbsUp, FiSearch, FiPlus, FiBookmark, FiShield, FiEye } from 'react-icons/fi';
+import { FiMessageSquare, FiThumbsUp, FiSearch, FiPlus, FiBookmark, FiEye } from 'react-icons/fi';
+import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 export default function Forum() {
-  const [threads, setThreads] = useState([
-    { _id: '1', title: 'How to approach Rotational Mechanics for JEE?', content: 'I am struggling with moment of inertia problems. Can anyone share their approach?', author: { name: 'Aarav S.' }, category: 'doubt', tags: ['Physics', 'JEE'], upvotes: 24, views: 156, replies: [{ author: { name: 'Dr. Sharma' }, content: 'Start with understanding the axis theorem...', upvotes: 12, createdAt: new Date().toISOString() }, { author: { name: 'Priya P.' }, content: 'I found HC Verma examples really helpful!', upvotes: 5, createdAt: new Date().toISOString() }], isPinned: true, createdAt: new Date(Date.now() - 86400000).toISOString() },
-    { _id: '2', title: 'Best resources for Organic Chemistry reactions?', content: 'Need recommendations for named reaction practice material.', author: { name: 'Sneha K.' }, category: 'resource', tags: ['Chemistry', 'NEET'], upvotes: 18, views: 203, replies: [{ author: { name: 'Rahul M.' }, content: 'MS Chauhan is the best book for this.', upvotes: 8, createdAt: new Date().toISOString() }], isPinned: false, createdAt: new Date(Date.now() - 172800000).toISOString() },
-    { _id: '3', title: 'Study schedule for last 3 months before JEE', content: 'Sharing my study plan that helped me score 98 percentile.', author: { name: 'Vikram J.' }, category: 'discussion', tags: ['JEE', 'Strategy'], upvotes: 45, views: 512, replies: [], isPinned: false, createdAt: new Date(Date.now() - 259200000).toISOString() },
-    { _id: '4', title: 'Integration by parts shortcut tricks', content: 'Here are 5 tricks that will save you time in exams...', author: { name: 'Kavya N.' }, category: 'resource', tags: ['Mathematics', 'JEE'], upvotes: 32, views: 287, replies: [{ author: { name: 'Arjun R.' }, content: 'ILATE rule is life saver!', upvotes: 3, createdAt: new Date().toISOString() }], isPinned: false, createdAt: new Date(Date.now() - 345600000).toISOString() },
-  ]);
+  const [threads, setThreads] = useState([]);
   const [selectedThread, setSelectedThread] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [newThread, setNewThread] = useState({ title: '', content: '', category: 'general', tags: '' });
   const [replyText, setReplyText] = useState('');
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const getVoteCount = (item) => {
+    if (typeof item?.upvotesCount === 'number') return item.upvotesCount;
+    if (Array.isArray(item?.upvotes)) return item.upvotes.length;
+    return Number(item?.upvotes) || 0;
+  };
+
+  const openThread = async (thread) => {
+    try {
+      const { data } = await api.get(`/forum/${thread._id}`);
+      setSelectedThread(data.thread);
+    } catch (error) {
+      console.error('Failed to load thread details', error);
+      setSelectedThread(thread);
+      toast.error('Could not refresh this thread');
+    }
+  };
+
+  useEffect(() => {
+    const loadThreads = async () => {
+      try {
+        setLoading(true);
+        const { data } = await api.get('/forum', { params: { category: filter === 'all' ? '' : filter, search } });
+        setThreads(data.threads || []);
+      } catch (error) {
+        console.error('Failed to load forum threads', error);
+        toast.error('Could not load forum threads');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timer = setTimeout(loadThreads, 150);
+    return () => clearTimeout(timer);
+  }, [filter, search]);
 
   const catColors = { doubt: '#ef4444', discussion: '#3b82f6', resource: '#10b981', announcement: '#f59e0b', general: '#94a3b8' };
   const filtered = threads.filter(t => (filter === 'all' || t.category === filter) && (!search || t.title.toLowerCase().includes(search.toLowerCase())));
@@ -33,7 +68,7 @@ export default function Forum() {
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '16px' }}>{selectedThread.content}</p>
             <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: 'var(--text-tertiary)' }}>
               <span>by <strong style={{ color: 'var(--text-primary)' }}>{selectedThread.author?.name}</strong></span>
-              <span><FiThumbsUp size={12} style={{ verticalAlign: 'middle' }} /> {selectedThread.upvotes}</span>
+              <span><FiThumbsUp size={12} style={{ verticalAlign: 'middle' }} /> {getVoteCount(selectedThread)}</span>
               <span><FiEye size={12} style={{ verticalAlign: 'middle' }} /> {selectedThread.views}</span>
               <span>{new Date(selectedThread.createdAt).toLocaleDateString()}</span>
             </div>
@@ -46,12 +81,25 @@ export default function Forum() {
                 <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{new Date(r.createdAt).toLocaleDateString()}</span>
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{r.content}</p>
-              <button style={{ marginTop: '8px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}><FiThumbsUp size={12} /> {r.upvotes}</button>
+              <button style={{ marginTop: '8px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}><FiThumbsUp size={12} /> {getVoteCount(r)}</button>
             </div>
           ))}
           <div className="glass-card" style={{ padding: '16px', borderRadius: '12px', marginTop: '16px' }}>
             <textarea value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Write your reply..." rows={3} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
-            <button onClick={() => { if (replyText.trim()) { setSelectedThread(prev => ({ ...prev, replies: [...(prev.replies || []), { author: { name: 'You' }, content: replyText, upvotes: 0, createdAt: new Date().toISOString() }] })); setReplyText(''); }}} style={{ marginTop: '8px', padding: '10px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>Post Reply</button>
+            <button onClick={async () => {
+              if (!replyText.trim()) return;
+              try {
+                setSubmitting(true);
+                const { data } = await api.post(`/forum/${selectedThread._id}/replies`, { content: replyText });
+                setSelectedThread(data.thread);
+                setReplyText('');
+                toast.success('Reply posted');
+              } catch (error) {
+                toast.error(error.response?.data?.message || 'Failed to post reply');
+              } finally {
+                setSubmitting(false);
+              }
+            }} style={{ marginTop: '8px', padding: '10px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }} disabled={submitting}>{submitting ? 'Posting...' : 'Post Reply'}</button>
           </div>
         </div>
       </div>
@@ -79,7 +127,7 @@ export default function Forum() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {filtered.map((t, i) => (
-            <motion.div key={t._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} onClick={() => setSelectedThread(t)} className="glass-card" style={{ padding: '18px', borderRadius: '14px', cursor: 'pointer', borderLeft: t.isPinned ? '3px solid #f59e0b' : 'none' }}>
+            <motion.div key={t._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} onClick={() => openThread(t)} className="glass-card" style={{ padding: '18px', borderRadius: '14px', cursor: 'pointer', borderLeft: t.isPinned ? '3px solid #f59e0b' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', gap: '6px', marginBottom: '6px', alignItems: 'center' }}>
@@ -91,7 +139,7 @@ export default function Forum() {
                   <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>by {t.author?.name} • {new Date(t.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: 'var(--text-tertiary)', alignItems: 'center', flexShrink: 0 }}>
-                  <span><FiThumbsUp size={12} /> {t.upvotes}</span>
+                  <span><FiThumbsUp size={12} /> {getVoteCount(t)}</span>
                   <span><FiMessageSquare size={12} /> {t.replies?.length || 0}</span>
                   <span><FiEye size={12} /> {t.views}</span>
                 </div>
@@ -113,7 +161,29 @@ export default function Forum() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                 <button onClick={() => setShowCreate(false)} style={{ padding: '10px 20px', borderRadius: '8px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
-                <button onClick={() => { setThreads(prev => [{ _id: Date.now().toString(), ...newThread, tags: newThread.tags.split(',').map(t => t.trim()).filter(Boolean), author: { name: 'You' }, upvotes: 0, views: 0, replies: [], createdAt: new Date().toISOString() }, ...prev]); setShowCreate(false); setNewThread({ title: '', content: '', category: 'general', tags: '' }); }} style={{ padding: '10px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>Create Thread</button>
+                <button onClick={async () => {
+                if (!newThread.title.trim() || !newThread.content.trim()) {
+                  toast.error('Please add a title and description');
+                  return;
+                }
+                try {
+                  setSubmitting(true);
+                  const { data } = await api.post('/forum', {
+                    title: newThread.title,
+                    content: newThread.content,
+                    category: newThread.category,
+                    tags: newThread.tags,
+                  });
+                  setThreads(prev => [data.thread, ...prev]);
+                  setShowCreate(false);
+                  setNewThread({ title: '', content: '', category: 'general', tags: '' });
+                  toast.success('Thread created');
+                } catch (error) {
+                  toast.error(error.response?.data?.message || 'Could not create thread');
+                } finally {
+                  setSubmitting(false);
+                }
+              }} style={{ padding: '10px 20px', borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }} disabled={submitting}>{submitting ? 'Creating...' : 'Create Thread'}</button>
               </div>
             </motion.div>
           </div>

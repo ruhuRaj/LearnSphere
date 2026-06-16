@@ -28,13 +28,20 @@ export const getLiveClasses = async (req, res, next) => {
 
 // @desc    Create live class (teacher)
 // @route   POST /api/live-classes
-export const createLiveClass = async (req, res, next) => {
+export const createLiveClass = async (req, res) => {
   try {
-    req.body.teacher = req.user._id;
-    const liveClass = await LiveClass.create(req.body);
-    res.status(201).json({ success: true, liveClass });
+    const payload = {
+      ...req.body,
+      teacher: req.user._id,
+      status: req.body.status || 'scheduled',
+      roomId: req.body.roomId || `room_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    };
+
+    const liveClass = await LiveClass.create(payload);
+    return res.status(201).json({ success: true, liveClass });
   } catch (error) {
-    next(error);
+    console.error('LiveClass create error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to create live class' });
   }
 };
 

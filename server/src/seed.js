@@ -11,6 +11,7 @@ import User from './models/User.js';
 import Course from './models/Course.js';
 import { Video, Notes } from './models/Video.js';
 import { Test, Question } from './models/Test.js';
+import { ForumThread } from './models/Extra.js';
 
 dotenv.config();
 
@@ -188,6 +189,46 @@ const seedData = async () => {
     ]);
 
     console.log(`✅ Created ${courses.length} courses`);
+
+    // ── Forum Threads ───────────────────────
+    await ForumThread.deleteMany({});
+    await ForumThread.insertMany([
+      {
+        title: 'How to approach Rotational Mechanics for JEE?',
+        content: 'I am struggling with moment of inertia problems. Can anyone share their approach?',
+        author: students[0]._id,
+        category: 'doubt',
+        tags: ['Physics', 'JEE'],
+        upvotes: [students[1]._id, students[2]._id],
+        views: 156,
+        replies: [
+          { author: teachers[0]._id, content: 'Start with understanding the axis theorem and practice symmetry-based problems.', upvotes: [students[0]._id], createdAt: new Date() },
+        ],
+        isPinned: true,
+      },
+      {
+        title: 'Best resources for Organic Chemistry reactions?',
+        content: 'Need recommendations for named reaction practice material.',
+        author: students[1]._id,
+        category: 'resource',
+        tags: ['Chemistry', 'NEET'],
+        upvotes: [students[3]._id],
+        views: 203,
+        replies: [],
+      },
+      {
+        title: 'Study schedule for the last 3 months before JEE',
+        content: 'Sharing a study plan that helped one of our students improve consistency.',
+        author: students[4]._id,
+        category: 'discussion',
+        tags: ['JEE', 'Strategy'],
+        upvotes: [students[0]._id, students[2]._id, students[3]._id],
+        views: 512,
+        replies: [],
+      },
+    ]);
+
+    console.log('✅ Seeded forum threads');
 
     // ── Summary ───────────────────────────────
     console.log('\n═══════════════════════════════════════');

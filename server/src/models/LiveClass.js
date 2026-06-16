@@ -26,12 +26,4 @@ const liveClassSchema = new mongoose.Schema({
 liveClassSchema.index({ course: 1, scheduledAt: -1 });
 liveClassSchema.index({ teacher: 1 });
 
-// Generate room ID before save
-liveClassSchema.pre('save', function (next) {
-  if (!this.roomId) {
-    this.roomId = `room_${this._id}_${Date.now()}`;
-  }
-  next();
-});
-
 export default mongoose.model('LiveClass', liveClassSchema);

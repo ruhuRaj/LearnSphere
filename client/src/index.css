@@ -182,6 +182,7 @@ img {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
 }
 
 .glass-card:hover {
@@ -457,12 +458,26 @@ img {
 .page-container {
   min-height: 100vh;
   padding-top: var(--nav-height);
+  width: 100%;
+  position: relative;
+}
+
+/* Auth pages (Login, Signup) centered layout */
+.auth-page {
+  min-height: 100vh;
+  width: 100%;
+  padding-top: var(--nav-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
 .section {
   padding: 5rem 1.5rem;
   max-width: 80rem;
   margin: 0 auto;
+  width: 100%;
 }
 
 @media (max-width: 768px) {
@@ -537,6 +552,9 @@ img {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .course-card:hover {
@@ -553,6 +571,23 @@ img {
 
 .course-card .card-body {
   padding: 1.25rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.course-card .card-body > :last-child {
+  margin-top: auto;
+}
+
+/* ── Scrollbar Hide ────────────────────────── */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* ── Tooltip ────────────────────────────────── */

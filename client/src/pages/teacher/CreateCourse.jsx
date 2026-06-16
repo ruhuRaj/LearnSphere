@@ -2,14 +2,25 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiOutlinePhotograph, HiOutlineBookOpen, HiOutlineCurrencyRupee, HiOutlineTag, HiOutlineSparkles, HiArrowRight, HiArrowLeft, HiOutlineCheckCircle } from 'react-icons/hi';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-const categories = ['JEE', 'NEET', 'CBSE 11', 'CBSE 12', 'Bihar Board', 'Jharkhand Board', 'Bengal Board'];
+// Must match Course model enum values exactly
+const categories = [
+  { label: 'JEE', value: 'JEE' },
+  { label: 'NEET', value: 'NEET' },
+  { label: 'CBSE 11', value: 'CBSE11' },
+  { label: 'CBSE 12', value: 'CBSE12' },
+  { label: 'Bihar Board', value: 'Bihar' },
+  { label: 'Jharkhand Board', value: 'Jharkhand' },
+  { label: 'Bengal Board', value: 'Bengal' },
+];
 const difficulties = ['Beginner', 'Intermediate', 'Advanced'];
 
 export default function CreateCourse() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', category: 'JEE', difficulty: 'Intermediate',
     price: '', discountPrice: '', language: 'English', tags: '',
@@ -23,9 +34,42 @@ export default function CreateCourse() {
   };
   const removeChapter = (i) => setForm({ ...form, chapters: form.chapters.filter((_, idx) => idx !== i) });
 
-  const handleSubmit = () => {
-    toast.success('Course created successfully! Pending admin approval.');
-    navigate('/teacher');
+  const handleSubmit = async () => {
+    // Validation
+    if (!form.title.trim()) { toast.error('Course title is required'); return; }
+    if (!form.description.trim()) { toast.error('Description is required'); return; }
+    if (!form.price || Number(form.price) <= 0) { toast.error('Price is required'); return; }
+
+    try {
+      setSubmitting(true);
+
+      // Prepare data for API
+      const courseData = {
+        title: form.title.trim(),
+        description: form.description.trim(),
+        category: form.category,
+        difficulty: form.difficulty,
+        price: Number(form.price),
+        discountPrice: form.discountPrice ? Number(form.discountPrice) : undefined,
+        language: form.language,
+        tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+        chapters: form.chapters
+          .filter((ch) => ch.title.trim())
+          .map((ch, i) => ({
+            title: ch.title.trim(),
+            order: i + 1,
+            topics: ch.topics ? ch.topics.split(',').map((t) => t.trim()).filter(Boolean) : [],
+          })),
+      };
+
+      await api.post('/courses', courseData);
+      toast.success('Course created successfully! Pending admin approval.');
+      navigate('/teacher');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create course');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const totalSteps = 3;
@@ -70,7 +114,7 @@ export default function CreateCourse() {
                 <div>
                   <label className="label">Category</label>
                   <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} style={{ appearance: 'auto' }}>
-                    {categories.map((c) => <option key={c}>{c}</option>)}
+                    {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </div>
                 <div>
@@ -159,8 +203,8 @@ export default function CreateCourse() {
                 <h4 className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Course Summary</h4>
                 <div className="grid grid-cols-2 gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
                   <span>Title: {form.title || '—'}</span>
-                  <span>Category: {form.category}</span>
-                  <span>Chapters: {form.chapters.length}</span>
+                  <span>Category: {categories.find((c) => c.value === form.category)?.label || form.category}</span>
+                  <span>Chapters: {form.chapters.filter((c) => c.title.trim()).length}</span>
                   <span>Difficulty: {form.difficulty}</span>
                 </div>
               </div>
@@ -177,8 +221,8 @@ export default function CreateCourse() {
                 Continue <HiArrowRight className="w-4 h-4" />
               </button>
             ) : (
-              <button onClick={handleSubmit} className="btn btn-primary">
-                <HiOutlineCheckCircle className="w-4 h-4" /> Publish Course
+              <button onClick={handleSubmit} className="btn btn-primary" disabled={submitting}>
+                <HiOutlineCheckCircle className="w-4 h-4" /> {submitting ? 'Creating...' : 'Publish Course'}
               </button>
             )}
           </div>

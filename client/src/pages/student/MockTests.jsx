@@ -1,24 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { HiOutlineClock, HiOutlineCheckCircle, HiOutlineChartBar, HiOutlineLightningBolt, HiOutlineSparkles, HiArrowRight, HiArrowLeft } from 'react-icons/hi';
-
-const tests = [
-  { id: 1, title: 'JEE Physics - Mechanics', questions: 30, duration: 45, difficulty: 'Hard', type: 'Topic', attempted: false, emoji: '⚛️' },
-  { id: 2, title: 'NEET Biology - Cell Biology', questions: 25, duration: 30, difficulty: 'Medium', type: 'Topic', attempted: true, score: 84, emoji: '🧬' },
-  { id: 3, title: 'JEE Full Syllabus Mock 1', questions: 75, duration: 180, difficulty: 'Hard', type: 'Full', attempted: true, score: 72, emoji: '📝' },
-  { id: 4, title: 'Daily Practice - Calculus', questions: 15, duration: 20, difficulty: 'Medium', type: 'Daily', attempted: false, emoji: '📐' },
-  { id: 5, title: 'AI Generated - Weak Topics', questions: 20, duration: 30, difficulty: 'Adaptive', type: 'AI', attempted: false, emoji: '🤖' },
-];
-
-const sampleQuestions = [
-  { id: 1, q: 'A projectile is thrown at angle 60° with horizontal with speed 10 m/s. The time of flight is:', options: ['√3 s', '2√3 s', '√3/2 s', '2 s'], correct: 0 },
-  { id: 2, q: 'The SI unit of impulse is:', options: ['N·s', 'J', 'W', 'Pa'], correct: 0 },
-  { id: 3, q: 'A block of mass 2 kg is placed on a frictionless surface. A force of 10 N is applied. The acceleration is:', options: ['2 m/s²', '5 m/s²', '10 m/s²', '20 m/s²'], correct: 1 },
-  { id: 4, q: 'The work done by gravity on a body moving horizontally is:', options: ['Positive', 'Negative', 'Zero', 'Depends on mass'], correct: 2 },
-  { id: 5, q: 'Moment of inertia of a solid sphere about its diameter is:', options: ['2/5 MR²', '2/3 MR²', '1/2 MR²', 'MR²'], correct: 0 },
-];
+import toast from 'react-hot-toast';
+import { HiOutlineClock, HiOutlineCheckCircle, HiOutlineLightningBolt, HiOutlineSparkles, HiArrowRight, HiArrowLeft } from 'react-icons/hi';
+import api from '../../services/api';
 
 export default function MockTests() {
+  const [tests, setTests] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list'); // list | test | result
   const [activeTest, setActiveTest] = useState(null);
   const [currentQ, setCurrentQ] = useState(0);
@@ -27,21 +15,77 @@ export default function MockTests() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [result, setResult] = useState(null);
 
-  const startTest = (test) => {
-    setActiveTest(test);
-    setCurrentQ(0);
-    setAnswers({});
-    setFlagged(new Set());
-    setTimeLeft(test.duration * 60);
-    setView('test');
+  useEffect(() => {
+    const loadTests = async () => {
+      try {
+        const response = await api.get('/tests?limit=20');
+        setTests(response?.data?.tests || []);
+      } catch (error) {
+        console.error('Failed to load tests:', error);
+        setTests([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTests();
+  }, []);
+
+  useEffect(() => {
+    if (view !== 'test' || timeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [view, timeLeft]);
+
+  const startTest = async (test) => {
+    try {
+      const response = await api.get(`/tests/${test._id}`);
+      const testDetail = response?.data?.test || test;
+      setActiveTest(testDetail);
+      setCurrentQ(0);
+      setAnswers({});
+      setFlagged(new Set());
+      setTimeLeft((testDetail.duration || 1) * 60);
+      setResult(null);
+      setView('test');
+    } catch (error) {
+      toast.error('Unable to load this test right now.');
+      console.error(error);
+    }
   };
 
-  const submitTest = () => {
-    let correct = 0;
-    sampleQuestions.forEach((q, i) => { if (answers[i] === q.correct) correct++; });
-    const score = Math.round((correct / sampleQuestions.length) * 100);
-    setResult({ score, correct, total: sampleQuestions.length, weakTopics: ['Rotational Mechanics', 'Projectile Motion'] });
+  const submitTest = async () => {
+    if (!activeTest?.questions?.length) return;
+
+    const correct = activeTest.questions.reduce((count, question, index) => {
+      const selectedOption = Number(answers[index]);
+      const isCorrect = question.options?.some((option, optionIndex) => option.isCorrect && optionIndex === selectedOption) || false;
+      return count + (isCorrect ? 1 : 0);
+    }, 0);
+
+    const score = Math.round((correct / activeTest.questions.length) * 100);
+    const weakTopics = activeTest.questions
+      .filter((question, index) => Number(answers[index]) !== undefined && !question.options?.[Number(answers[index])]?.isCorrect)
+      .map((question) => question.topic)
+      .filter(Boolean)
+      .filter((topic, index, topics) => topics.indexOf(topic) === index);
+
+    setResult({ score, correct, total: activeTest.questions.length, weakTopics: weakTopics.length ? weakTopics : ['Keep practicing to improve your score'] });
     setView('result');
+
+    try {
+      await api.post(`/tests/${activeTest._id}/submit`, {
+        answers: Object.entries(answers).map(([questionIndex, selectedOption]) => ({
+          questionIndex: Number(questionIndex),
+          selectedOption: Number(selectedOption),
+        })),
+        timeTaken: (activeTest.duration || 1) * 60 - timeLeft,
+      });
+    } catch (error) {
+      console.error('Failed to submit test result:', error);
+    }
   };
 
   const toggleFlag = () => {
@@ -91,7 +135,8 @@ export default function MockTests() {
   }
 
   if (view === 'test') {
-    const q = sampleQuestions[currentQ];
+    const q = activeTest?.questions?.[currentQ];
+    if (!q) return null;
     return (
       <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -110,7 +155,7 @@ export default function MockTests() {
           <div className="glass-card p-4 mb-6">
             <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>Question Navigation</p>
             <div className="flex flex-wrap gap-2">
-              {sampleQuestions.map((_, i) => (
+              {activeTest.questions.map((_, i) => (
                 <button key={i} onClick={() => setCurrentQ(i)} className="w-9 h-9 rounded-lg text-xs font-medium transition-all" style={{
                   background: currentQ === i ? 'var(--primary)' : answers[i] !== undefined ? 'rgba(16,185,129,0.2)' : flagged.has(i) ? 'rgba(245,158,11,0.2)' : 'var(--bg-tertiary)',
                   color: currentQ === i ? 'white' : answers[i] !== undefined ? 'var(--success)' : 'var(--text-secondary)',
@@ -125,20 +170,20 @@ export default function MockTests() {
           {/* Question */}
           <motion.div key={currentQ} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-8">
             <div className="flex items-center justify-between mb-4">
-              <span className="badge badge-primary">Question {currentQ + 1}/{sampleQuestions.length}</span>
+              <span className="badge badge-primary">Question {currentQ + 1}/{activeTest.questions.length}</span>
               <button onClick={toggleFlag} className="btn btn-ghost btn-sm" style={{ color: flagged.has(currentQ) ? 'var(--accent)' : 'var(--text-tertiary)' }}>
                 {flagged.has(currentQ) ? '🚩 Flagged' : '🏳️ Flag'}
               </button>
             </div>
-            <h3 className="text-lg font-medium mb-6" style={{ color: 'var(--text-primary)' }}>{q.q}</h3>
+            <h3 className="text-lg font-medium mb-6" style={{ color: 'var(--text-primary)' }}>{q.text}</h3>
             <div className="space-y-3">
-              {q.options.map((opt, i) => (
+              {q.options?.map((opt, i) => (
                 <button key={i} onClick={() => setAnswers({ ...answers, [currentQ]: i })} className="w-full text-left p-4 rounded-xl transition-all text-sm" style={{
                   background: answers[currentQ] === i ? 'rgba(99,102,241,0.15)' : 'var(--bg-tertiary)',
                   border: answers[currentQ] === i ? '2px solid var(--primary)' : '2px solid transparent',
                   color: 'var(--text-primary)'
                 }}>
-                  <span className="font-medium mr-3" style={{ color: 'var(--text-tertiary)' }}>{String.fromCharCode(65 + i)}.</span>{opt}
+                  <span className="font-medium mr-3" style={{ color: 'var(--text-tertiary)' }}>{String.fromCharCode(65 + i)}.</span>{opt.text || opt}
                 </button>
               ))}
             </div>
@@ -146,7 +191,7 @@ export default function MockTests() {
               <button onClick={() => setCurrentQ(Math.max(0, currentQ - 1))} className="btn btn-secondary" disabled={currentQ === 0}>
                 <HiArrowLeft className="w-4 h-4" /> Previous
               </button>
-              {currentQ === sampleQuestions.length - 1 ? (
+              {currentQ === activeTest.questions.length - 1 ? (
                 <button onClick={submitTest} className="btn btn-primary">Submit Test</button>
               ) : (
                 <button onClick={() => setCurrentQ(currentQ + 1)} className="btn btn-primary">Next <HiArrowRight className="w-4 h-4" /></button>
@@ -168,43 +213,49 @@ export default function MockTests() {
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tests.map((test, i) => (
-            <motion.div key={test.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
-              <div className="glass-card p-5 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-2xl">{test.emoji}</span>
-                  <span className="badge text-xs" style={{
-                    background: test.type === 'AI' ? 'rgba(99,102,241,0.1)' : test.type === 'Full' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
-                    color: test.type === 'AI' ? 'var(--primary)' : test.type === 'Full' ? 'var(--error)' : 'var(--success)'
-                  }}>{test.type === 'AI' && <HiOutlineSparkles className="w-3 h-3 mr-1" />}{test.type}</span>
-                </div>
-                <h3 className="font-semibold text-sm mb-2 font-[Outfit]" style={{ color: 'var(--text-primary)' }}>{test.title}</h3>
-                <div className="flex items-center gap-3 text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
-                  <span>{test.questions} Qs</span>
-                  <span>{test.duration} min</span>
-                  <span className="badge text-[10px]" style={{
-                    background: test.difficulty === 'Hard' ? 'rgba(239,68,68,0.1)' : test.difficulty === 'Adaptive' ? 'rgba(99,102,241,0.1)' : 'rgba(245,158,11,0.1)',
-                    color: test.difficulty === 'Hard' ? 'var(--error)' : test.difficulty === 'Adaptive' ? 'var(--primary)' : 'var(--accent)'
-                  }}>{test.difficulty}</span>
-                </div>
-                <div className="mt-auto pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
-                  {test.attempted ? (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <HiOutlineCheckCircle className="w-4 h-4" style={{ color: 'var(--success)' }} />
-                        <span className="text-sm font-bold" style={{ color: 'var(--success)' }}>{test.score}%</span>
+          {loading ? (
+            <div className="glass-card p-6 text-sm" style={{ color: 'var(--text-secondary)' }}>Loading available tests…</div>
+          ) : tests.length ? (
+            tests.map((test, i) => (
+              <motion.div key={test._id || test.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+                <div className="glass-card p-5 h-full flex flex-col">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-2xl">📝</span>
+                    <span className="badge text-xs" style={{
+                      background: test.type === 'ai-generated' ? 'rgba(99,102,241,0.1)' : test.type === 'full' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
+                      color: test.type === 'ai-generated' ? 'var(--primary)' : test.type === 'full' ? 'var(--error)' : 'var(--success)'
+                    }}>{test.type === 'ai-generated' && <HiOutlineSparkles className="w-3 h-3 mr-1" />}{test.type || 'Test'}</span>
+                  </div>
+                  <h3 className="font-semibold text-sm mb-2 font-[Outfit]" style={{ color: 'var(--text-primary)' }}>{test.title}</h3>
+                  <div className="flex items-center gap-3 text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
+                    <span>{Array.isArray(test.questions) ? test.questions.length : 0} Qs</span>
+                    <span>{test.duration || 0} min</span>
+                    <span className="badge text-[10px]" style={{
+                      background: test.category === 'Hard' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                      color: test.category === 'Hard' ? 'var(--error)' : 'var(--accent)'
+                    }}>{test.category || 'Practice'}</span>
+                  </div>
+                  <div className="mt-auto pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
+                    {test.attempted ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <HiOutlineCheckCircle className="w-4 h-4" style={{ color: 'var(--success)' }} />
+                          <span className="text-sm font-bold" style={{ color: 'var(--success)' }}>{test.score || 0}%</span>
+                        </div>
+                        <button onClick={() => startTest(test)} className="btn btn-ghost btn-sm" style={{ color: 'var(--primary)' }}>Retake</button>
                       </div>
-                      <button onClick={() => startTest(test)} className="btn btn-ghost btn-sm" style={{ color: 'var(--primary)' }}>Retake</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => startTest(test)} className="btn btn-primary btn-sm w-full">
-                      <HiOutlineLightningBolt className="w-4 h-4" /> Start Test
-                    </button>
-                  )}
+                    ) : (
+                      <button onClick={() => startTest(test)} className="btn btn-primary btn-sm w-full">
+                        <HiOutlineLightningBolt className="w-4 h-4" /> Start Test
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))
+          ) : (
+            <div className="glass-card p-6 text-sm" style={{ color: 'var(--text-secondary)' }}>No tests are available right now.</div>
+          )}
         </div>
       </div>
     </div>

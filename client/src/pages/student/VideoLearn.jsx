@@ -1,27 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiOutlinePlay, HiOutlineBookOpen, HiOutlineChatAlt2, HiOutlineDocumentText, HiOutlineCheckCircle, HiOutlineChevronDown, HiOutlineChevronRight } from 'react-icons/hi';
+import api from '../../services/api';
 
-const chapters = [
-  { title: 'Mechanics', lessons: [
-    { id: 1, title: 'Introduction to Mechanics', duration: '18:30', completed: true },
-    { id: 2, title: 'Newton\'s Laws of Motion', duration: '24:15', completed: true },
-    { id: 3, title: 'Work, Energy & Power', duration: '22:00', completed: true },
-    { id: 4, title: 'Rotational Dynamics', duration: '28:45', completed: false },
-    { id: 5, title: 'Gravitation', duration: '20:10', completed: false },
-  ]},
-  { title: 'Thermodynamics', lessons: [
-    { id: 6, title: 'Laws of Thermodynamics', duration: '25:00', completed: false },
-    { id: 7, title: 'Kinetic Theory of Gases', duration: '22:30', completed: false },
-    { id: 8, title: 'Heat Transfer', duration: '19:45', completed: false },
-  ]},
-  { title: 'Waves & Optics', lessons: [
-    { id: 9, title: 'Wave Motion', duration: '21:00', completed: false },
-    { id: 10, title: 'Sound Waves', duration: '18:45', completed: false },
-    { id: 11, title: 'Ray Optics', duration: '26:30', completed: false },
-  ]},
-];
+const formatDuration = (seconds) => {
+  const safeSeconds = Number(seconds) || 0;
+  const mins = Math.floor(safeSeconds / 60);
+  const secs = safeSeconds % 60;
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+};
 
 const comments = [
   { user: 'Rahul K.', text: 'Great explanation of the concept!', time: '2h ago', avatar: '👨‍🎓' },
@@ -30,12 +18,73 @@ const comments = [
 
 export default function VideoLearn() {
   const { courseId } = useParams();
-  const [activeLesson, setActiveLesson] = useState(chapters[0].lessons[3]); // Resume from last unwatched
+  const [course, setCourse] = useState(null);
+  const [videos, setVideos] = useState([]);
+  const [activeLesson, setActiveLesson] = useState(null);
   const [expandedChapter, setExpandedChapter] = useState(0);
   const [tab, setTab] = useState('lessons');
   const [notes, setNotes] = useState('');
   const [comment, setComment] = useState('');
   const [speed, setSpeed] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadCourseData = async () => {
+      try {
+        setLoading(true);
+        const [courseResponse, videosResponse] = await Promise.all([
+          api.get(`/courses/${courseId}`),
+          api.get(`/videos/course/${courseId}`),
+        ]);
+
+        if (!mounted) return;
+
+        const nextCourse = courseResponse?.data?.course || null;
+        const nextVideos = Array.isArray(videosResponse?.data?.videos) ? videosResponse.data.videos : [];
+
+        setCourse(nextCourse);
+        setVideos(nextVideos);
+        setActiveLesson(nextVideos[0] || null);
+      } catch (error) {
+        console.error('Failed to load course learning data:', error);
+        if (mounted) {
+          setCourse(null);
+          setVideos([]);
+          setActiveLesson(null);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    if (courseId) {
+      loadCourseData();
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [courseId]);
+
+  const lessonGroups = useMemo(() => {
+    if (!videos.length) return [];
+
+    return videos.reduce((groups, video) => {
+      const key = video.chapter || 'Course Lessons';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push({
+        ...video,
+        id: video._id,
+        durationLabel: formatDuration(video.duration),
+        completed: false,
+      });
+      return groups;
+    }, {});
+  }, [videos]);
+
+  const currentLesson = activeLesson || videos[0] || null;
 
   return (
     <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
@@ -64,8 +113,8 @@ export default function VideoLearn() {
 
             {/* Below Video */}
             <div className="px-4 sm:px-6 py-4">
-              <h2 className="text-xl font-bold font-[Outfit] mb-1" style={{ color: 'var(--text-primary)' }}>{activeLesson.title}</h2>
-              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Complete JEE Physics • {activeLesson.duration}</p>
+              <h2 className="text-xl font-bold font-[Outfit] mb-1" style={{ color: 'var(--text-primary)' }}>{currentLesson?.title || 'Course Lesson'}</h2>
+              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{course?.title || 'Your course'} • {currentLesson ? `${formatDuration(currentLesson.duration)} total` : 'Loading lesson data…'}</p>
 
               {/* Tabs */}
               <div className="flex gap-1 mt-4 p-1 rounded-xl" style={{ background: 'var(--bg-tertiary)' }}>
@@ -84,25 +133,31 @@ export default function VideoLearn() {
               <div className="mt-4 lg:hidden">
                 {tab === 'lessons' && (
                   <div className="space-y-2">
-                    {chapters.map((ch, ci) => (
-                      <div key={ci} className="glass-card overflow-hidden">
-                        <button onClick={() => setExpandedChapter(expandedChapter === ci ? -1 : ci)} className="w-full flex items-center justify-between p-3 text-left">
-                          <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{ch.title}</span>
-                          {expandedChapter === ci ? <HiOutlineChevronDown className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} /> : <HiOutlineChevronRight className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />}
-                        </button>
-                        {expandedChapter === ci && (
-                          <div className="px-3 pb-3 space-y-1">
-                            {ch.lessons.map((lesson) => (
-                              <button key={lesson.id} onClick={() => setActiveLesson(lesson)} className="w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors" style={{ background: activeLesson.id === lesson.id ? 'rgba(99,102,241,0.1)' : 'transparent' }}>
-                                {lesson.completed ? <HiOutlineCheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--success)' }} /> : <HiOutlinePlay className="w-4 h-4 flex-shrink-0" style={{ color: activeLesson.id === lesson.id ? 'var(--primary)' : 'var(--text-tertiary)' }} />}
-                                <span className="text-xs flex-1" style={{ color: activeLesson.id === lesson.id ? 'var(--primary)' : 'var(--text-secondary)' }}>{lesson.title}</span>
-                                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{lesson.duration}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    {loading ? (
+                      <div className="glass-card p-3 text-sm" style={{ color: 'var(--text-secondary)' }}>Loading lesson content…</div>
+                    ) : Object.keys(lessonGroups).length ? (
+                      Object.entries(lessonGroups).map(([title, lessons], ci) => (
+                        <div key={title} className="glass-card overflow-hidden">
+                          <button onClick={() => setExpandedChapter(expandedChapter === ci ? -1 : ci)} className="w-full flex items-center justify-between p-3 text-left">
+                            <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{title}</span>
+                            {expandedChapter === ci ? <HiOutlineChevronDown className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} /> : <HiOutlineChevronRight className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />}
+                          </button>
+                          {expandedChapter === ci && (
+                            <div className="px-3 pb-3 space-y-1">
+                              {lessons.map((lesson) => (
+                                <button key={lesson.id} onClick={() => setActiveLesson(lesson)} className="w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors" style={{ background: currentLesson?._id === lesson.id ? 'rgba(99,102,241,0.1)' : 'transparent' }}>
+                                  {lesson.completed ? <HiOutlineCheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--success)' }} /> : <HiOutlinePlay className="w-4 h-4 flex-shrink-0" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-tertiary)' }} />}
+                                  <span className="text-xs flex-1" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-secondary)' }}>{lesson.title}</span>
+                                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{lesson.durationLabel}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="glass-card p-3 text-sm" style={{ color: 'var(--text-secondary)' }}>No lessons are available for this course yet.</div>
+                    )}
                   </div>
                 )}
                 {tab === 'notes' && (
@@ -142,27 +197,33 @@ export default function VideoLearn() {
             <div className="p-4">
               <h3 className="font-semibold font-[Outfit] mb-3" style={{ color: 'var(--text-primary)' }}>Course Content</h3>
               <div className="space-y-2">
-                {chapters.map((ch, ci) => (
-                  <div key={ci}>
-                    <button onClick={() => setExpandedChapter(expandedChapter === ci ? -1 : ci)} className="w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors" style={{ background: expandedChapter === ci ? 'var(--bg-tertiary)' : 'transparent' }}>
-                      <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{ch.title}</span>
-                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{ch.lessons.length} lessons</span>
-                    </button>
-                    {expandedChapter === ci && (
-                      <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="overflow-hidden pl-2 space-y-0.5 mt-1">
-                        {ch.lessons.map((lesson) => (
-                          <button key={lesson.id} onClick={() => setActiveLesson(lesson)} className="w-full flex items-center gap-2.5 p-2 rounded-lg text-left transition-colors" style={{ background: activeLesson.id === lesson.id ? 'rgba(99,102,241,0.1)' : 'transparent' }}>
-                            {lesson.completed ? <HiOutlineCheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--success)' }} /> : <HiOutlinePlay className="w-4 h-4 flex-shrink-0" style={{ color: activeLesson.id === lesson.id ? 'var(--primary)' : 'var(--text-tertiary)' }} />}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs truncate" style={{ color: activeLesson.id === lesson.id ? 'var(--primary)' : 'var(--text-secondary)' }}>{lesson.title}</p>
-                              <p className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>{lesson.duration}</p>
-                            </div>
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </div>
-                ))}
+                {loading ? (
+                  <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading lesson content…</div>
+                ) : Object.keys(lessonGroups).length ? (
+                  Object.entries(lessonGroups).map(([title, lessons], ci) => (
+                    <div key={title}>
+                      <button onClick={() => setExpandedChapter(expandedChapter === ci ? -1 : ci)} className="w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors" style={{ background: expandedChapter === ci ? 'var(--bg-tertiary)' : 'transparent' }}>
+                        <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{title}</span>
+                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{lessons.length} lessons</span>
+                      </button>
+                      {expandedChapter === ci && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="overflow-hidden pl-2 space-y-0.5 mt-1">
+                          {lessons.map((lesson) => (
+                            <button key={lesson.id} onClick={() => setActiveLesson(lesson)} className="w-full flex items-center gap-2.5 p-2 rounded-lg text-left transition-colors" style={{ background: currentLesson?._id === lesson.id ? 'rgba(99,102,241,0.1)' : 'transparent' }}>
+                              {lesson.completed ? <HiOutlineCheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--success)' }} /> : <HiOutlinePlay className="w-4 h-4 flex-shrink-0" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-tertiary)' }} />}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs truncate" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-secondary)' }}>{lesson.title}</p>
+                                <p className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>{lesson.durationLabel}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No lesson data available yet.</div>
+                )}
               </div>
 
               {/* Notes Section - Desktop */}

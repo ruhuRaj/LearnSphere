@@ -32,6 +32,7 @@ const PYQ = lazy(() => import('./pages/student/PYQ'));
 const Certificates = lazy(() => import('./pages/student/Certificates'));
 
 const TeacherDashboard = lazy(() => import('./pages/teacher/Dashboard'));
+const TeacherProfile = lazy(() => import('./pages/teacher/Profile'));
 const CreateCourse = lazy(() => import('./pages/teacher/CreateCourse'));
 const TeacherStudents = lazy(() => import('./pages/teacher/Students'));
 const TeacherAssignments = lazy(() => import('./pages/teacher/Assignments'));
@@ -47,6 +48,8 @@ const ParentDashboard = lazy(() => import('./pages/parent/Dashboard'));
 export default function App() {
   const dispatch = useDispatch();
   const { token } = useSelector((state) => state.auth);
+  const showNavbar = !token;
+  const showFooter = !token;
 
   useEffect(() => {
     if (token) {
@@ -56,7 +59,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
-      <Navbar />
+      {showNavbar && <Navbar />}
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Routes */}
@@ -87,6 +90,7 @@ export default function App() {
 
           {/* Teacher Routes */}
           <Route path="/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
+          <Route path="/teacher/profile" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherProfile /></ProtectedRoute>} />
           <Route path="/teacher/create-course" element={<ProtectedRoute allowedRoles={['teacher']}><CreateCourse /></ProtectedRoute>} />
           <Route path="/teacher/students" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherStudents /></ProtectedRoute>} />
           <Route path="/teacher/assignments" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherAssignments /></ProtectedRoute>} />
@@ -114,7 +118,7 @@ export default function App() {
         </Routes>
       </Suspense>
       <FloatingAI />
-      <Footer />
+      {showFooter && <Footer />}
     </div>
   );
 }

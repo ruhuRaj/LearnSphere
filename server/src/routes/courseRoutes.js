@@ -2,12 +2,14 @@ import express from 'express';
 import {
   getCourses, getCourse, createCourse, updateCourse,
   deleteCourse, enrollCourse, approveCourse, getMyCourses,
+  getStudentEnrolledCourses,
 } from '../controllers/courseController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get('/', getCourses);
+router.get('/enrolled', protect, authorize('student'), getStudentEnrolledCourses);
 router.get('/my-courses', protect, authorize('teacher'), getMyCourses);
 router.get('/:id', getCourse);
 router.post('/', protect, authorize('teacher', 'admin'), createCourse);
