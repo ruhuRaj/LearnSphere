@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiOutlinePlay, HiOutlineBookOpen, HiOutlineChatAlt2, HiOutlineDocumentText, HiOutlineCheckCircle, HiOutlineChevronDown, HiOutlineChevronRight } from 'react-icons/hi';
@@ -27,6 +27,7 @@ export default function VideoLearn() {
   const [comment, setComment] = useState('');
   const [speed, setSpeed] = useState(1);
   const [loading, setLoading] = useState(true);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -85,6 +86,27 @@ export default function VideoLearn() {
   }, [videos]);
 
   const currentLesson = activeLesson || videos[0] || null;
+  const currentUrl = currentLesson?.url || '';
+
+  const getVideoType = (url) => {
+    if (!url) return null;
+    if (url.includes('.mp4')) return 'video/mp4';
+    if (url.includes('.webm')) return 'video/webm';
+    if (url.includes('.ogg') || url.includes('.ogv')) return 'video/ogg';
+    return null;
+  };
+
+  const currentVideoType = getVideoType(currentUrl);
+  const isYoutubeUrl = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/.test(currentUrl);
+  const youtubeIdMatch = currentUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  const youtubeEmbedUrl = youtubeIdMatch ? `https://www.youtube.com/embed/${youtubeIdMatch[1]}` : '';
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.load();
+      videoRef.current.playbackRate = speed;
+    }
+  }, [speed, currentUrl]);
 
   return (
     <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
@@ -94,15 +116,42 @@ export default function VideoLearn() {
           <div className="flex-1 lg:pr-0">
             {/* Video Container */}
             <div className="relative w-full" style={{ aspectRatio: '16/9', background: '#000', borderRadius: '0 0 0 0' }}>
-              <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1e1b4b, #312e81)' }}>
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 cursor-pointer transition-transform hover:scale-110" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)' }}>
-                    <HiOutlinePlay className="w-8 h-8 text-white ml-1" />
+              {currentLesson ? (
+                isYoutubeUrl ? (
+                  <iframe
+                    title={currentLesson.title || 'Video lesson'}
+                    src={youtubeEmbedUrl}
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    key={currentUrl}
+                    ref={videoRef}
+                    src={currentUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="w-full h-full"
+                    poster={currentLesson.thumbnail || ''}
+                    crossOrigin="anonymous"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                )
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1e1b4b, #312e81)' }}>
+                  <div className="text-center px-4">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)' }}>
+                      <HiOutlinePlay className="w-8 h-8 text-white ml-1" />
+                    </div>
+                    <p className="text-white font-semibold">No lesson selected yet</p>
+                    <p className="text-indigo-200 text-sm mt-1">Choose a lesson from the list to start watching.</p>
                   </div>
-                  <p className="text-white font-semibold">{activeLesson.title}</p>
-                  <p className="text-indigo-200 text-sm mt-1">{activeLesson.duration}</p>
                 </div>
-              </div>
+              )}
               {/* Speed Control */}
               <div className="absolute bottom-4 right-4 flex items-center gap-2">
                 <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="px-2 py-1 rounded-lg text-xs font-medium text-white" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: 'none' }}>
@@ -146,7 +195,7 @@ export default function VideoLearn() {
                             <div className="px-3 pb-3 space-y-1">
                               {lessons.map((lesson) => (
                                 <button key={lesson.id} onClick={() => setActiveLesson(lesson)} className="w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors" style={{ background: currentLesson?._id === lesson.id ? 'rgba(99,102,241,0.1)' : 'transparent' }}>
-                                  {lesson.completed ? <HiOutlineCheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--success)' }} /> : <HiOutlinePlay className="w-4 h-4 flex-shrink-0" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-tertiary)' }} />}
+                                  {lesson.completed ? <HiOutlineCheckCircle className="w-4 h-4 shrink-0" style={{ color: 'var(--success)' }} /> : <HiOutlinePlay className="w-4 h-4 shrink-0" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-tertiary)' }} />}
                                   <span className="text-xs flex-1" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-secondary)' }}>{lesson.title}</span>
                                   <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{lesson.durationLabel}</span>
                                 </button>
@@ -193,7 +242,7 @@ export default function VideoLearn() {
           </div>
 
           {/* Sidebar - Lesson List (Desktop) */}
-          <div className="hidden lg:block w-80 flex-shrink-0 overflow-y-auto" style={{ maxHeight: 'calc(100vh - var(--nav-height))', borderLeft: '1px solid var(--border-color)' }}>
+          <div className="hidden lg:block w-80 shrink-0 overflow-y-auto" style={{ maxHeight: 'calc(100vh - var(--nav-height))', borderLeft: '1px solid var(--border-color)' }}>
             <div className="p-4">
               <h3 className="font-semibold font-[Outfit] mb-3" style={{ color: 'var(--text-primary)' }}>Course Content</h3>
               <div className="space-y-2">

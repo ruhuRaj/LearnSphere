@@ -68,6 +68,11 @@ export const createVideo = async (req, res, next) => {
       videoData.url = uploadResult.secure_url;
       videoData.publicId = uploadResult.public_id;
 
+      // Use Cloudinary's actual measured duration instead of trusting the client value
+      if (uploadResult.duration) {
+        videoData.duration = Math.round(uploadResult.duration);
+      }
+
       // remove temp file
       try { fs.unlinkSync(req.file.path); } catch (e) { console.warn('Failed to remove temp video file:', e.message); }
     } else if (req.body.url) {

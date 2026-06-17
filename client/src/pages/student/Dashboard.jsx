@@ -416,6 +416,7 @@ function Lectures({ courses, videosByCourse = {} }) {
   const [selCourse, setSelCourse] = useState(courses[0] || null);
   const [selTopic, setSelTopic] = useState('');
   const [playing, setPlaying] = useState(null);
+  const videoRef = useState(null)[0];
 
   useEffect(() => {
     if (courses[0]) {
@@ -439,6 +440,11 @@ function Lectures({ courses, videosByCourse = {} }) {
     }
   }, [topics, selTopic]);
 
+  const currentUrl = playing?.url || '';
+  const youtubeIdMatch = currentUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  const isYoutubeUrl = Boolean(youtubeIdMatch);
+  const youtubeEmbedUrl = youtubeIdMatch ? `https://www.youtube.com/embed/${youtubeIdMatch[1]}` : '';
+
   return (
     <div>
       <h2 style={sectionTitle}>Watch Lectures</h2>
@@ -448,17 +454,45 @@ function Lectures({ courses, videosByCourse = {} }) {
       {playing ? (
         <Card style={{ padding: 24 }}>
           <button onClick={() => setPlaying(null)} style={backBtn}>← Back to lectures</button>
-          {/* Player mock */}
-          <div style={{ aspectRatio: '16/9', background: '#000', borderRadius: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>{selCourse?.emoji}</div>
-            <p style={{ color: '#fff', fontWeight: 700, fontSize: 16, margin: '0 0 4px', textAlign: 'center', padding: '0 24px' }}>{playing.title}</p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, margin: 0 }}>{playing.duration}</p>
-            <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
-              {['⏮', '⏪', '▶', '⏩', '⏭'].map(ctrl => (
-                <button key={ctrl} style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: 16, cursor: 'pointer' }}>{ctrl}</button>
-              ))}
-            </div>
+
+          <div style={{ aspectRatio: '16/9', background: '#000', borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
+            {currentUrl ? (
+              isYoutubeUrl ? (
+                <iframe
+                  title={playing.title || 'Video lesson'}
+                  src={youtubeEmbedUrl}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  style={{ display: 'block' }}
+                />
+              ) : (
+                <video
+                  key={currentUrl}
+                  src={currentUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  width="100%"
+                  height="100%"
+                  style={{ display: 'block', background: '#000' }}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              )
+            ) : (
+              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>{selCourse?.emoji}</div>
+                <p style={{ color: '#fff', fontWeight: 700, fontSize: 16, margin: '0 0 4px', textAlign: 'center', padding: '0 24px' }}>
+                  This video has no playable source yet
+                </p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, margin: 0 }}>Ask your teacher to re-upload this lecture.</p>
+              </div>
+            )}
           </div>
+
           <h3 style={{ fontSize: 18, fontWeight: 800, color: C.text, margin: '0 0 4px', fontFamily: 'Outfit, system-ui, sans-serif' }}>{playing.title}</h3>
           <p style={{ margin: 0, fontSize: 12, color: C.textDim }}>{selCourse?.title} · {playing.chapter || selTopic || 'General'} · {playing.durationLabel || playing.duration}</p>
         </Card>
