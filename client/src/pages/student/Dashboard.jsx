@@ -137,10 +137,11 @@ const Avatar = ({ name, src, size = 44 }) => {
   );
 };
 
-const Card = ({ children, style = {}, hover = false }) => {
+const Card = ({ children, style = {}, hover = false, ...props }) => {
   const [hov, setHov] = useState(false);
   return (
     <div
+      {...props}
       onMouseEnter={() => hover && setHov(true)}
       onMouseLeave={() => hover && setHov(false)}
       style={{
@@ -342,10 +343,11 @@ function Notes({ courses, notes = [] }) {
 
   const topics = useMemo(() => {
     if (!selCourse) return [];
-    return [...new Set(notes
+    const topicList = notes
       .filter((note) => (note.course?._id || note.course) === (selCourse._id || selCourse.id))
-      .map((note) => note.subject || note.topic || 'General'))
-      .filter(Boolean)];
+      .map((note) => note.subject || note.topic || 'General')
+      .filter(Boolean);
+    return [...new Set(topicList)];
   }, [notes, selCourse]);
 
   useEffect(() => {
@@ -372,19 +374,32 @@ function Notes({ courses, notes = [] }) {
       {openNote ? (
         <Card style={{ padding: 24 }}>
           <button onClick={() => setOpenNote(null)} style={backBtn}>← Back to notes</button>
-          <h3 style={{ fontSize: 20, fontWeight: 800, color: C.text, margin: '0 0 6px', fontFamily: 'Outfit, system-ui, sans-serif' }}>{openNote.title}</h3>
-          <p style={{ fontSize: 11, color: C.textDim, margin: '0 0 20px' }}>{selCourse?.title} · {openNote.subject || selTopic || 'General'} · {formatDate(openNote.createdAt || openNote.date)}</p>
-          <div style={{ fontSize: 14, lineHeight: 1.85, color: C.textMid, whiteSpace: 'pre-wrap' }}>{openNote.content || openNote.description || 'No summary available for this note yet.'}</div>
+          <h3 style={{ fontSize: 20, fontWeight: 800, color: C.text, margin: '0 0 6px', fontFamily: 'Outfit, system-ui, sans-serif' }}>{openNote.title || 'Notes'}</h3>
+          <p style={{ fontSize: 11, color: C.textDim, margin: '0 0 20px' }}>{selCourse?.title} · {openNote.chapter || openNote.subject || selTopic || 'General'} · {formatDate(openNote.createdAt || openNote.date)}</p>
+          {(openNote.localPath || openNote.fileUrl) && (
+            <div style={{ marginBottom: 18 }}>
+              <a
+                href={openNote.localPath || openNote.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--primary)', fontSize: 13, fontWeight: 700 }}
+              >
+                Open PDF Notes
+              </a>
+            </div>
+          )}
+          <div style={{ fontSize: 14, lineHeight: 1.85, color: C.textMid, whiteSpace: 'pre-wrap' }}>{openNote.content || openNote.description || ((openNote.localPath || openNote.fileUrl) ? 'This is a PDF note. Open it above.' : 'No summary available for this note yet.')}</div>
         </Card>
       ) : noteList.length ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
           {noteList.map(n => (
             <Card key={n.id} hover style={{ padding: 18, cursor: 'pointer' }} onClick={() => setOpenNote(n)}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>{n.title}</p>
-                <Tag>{(n.subject || selTopic || 'Note').split(' ')[0]}</Tag>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>{n.title || 'Untitled Note'}</p>
               </div>
-              <p style={{ margin: '0 0 10px', fontSize: 12, color: C.textMid, lineHeight: 1.6 }}>{(n.content || n.description || 'No note preview available.').slice(0, 100)}…</p>
+                <Tag>{(n.localPath || n.fileUrl) ? 'PDF' : (n.subject || selTopic || 'Note').split(' ')[0]}</Tag>
+
+              <p style={{ margin: '0 0 10px', fontSize: 12, color: C.textMid, lineHeight: 1.6 }}>{(n.content || n.description || ((n.localPath || n.fileUrl) ? 'PDF notes available' : 'No note preview available.')).slice(0, 100)}…</p>
               <p style={{ margin: 0, fontSize: 10, color: C.textDim }}>{formatDate(n.createdAt || n.date)}</p>
             </Card>
           ))}
@@ -471,67 +486,144 @@ function Lectures({ courses, videosByCourse = {} }) {
 
 /* ── DOUBTS ── */
 function Doubts({ courses }) {
-  const [text, setText] = useState('');
-  const [selCourse, setSelCourse] = useState(courses[0]);
-  const [msgs, setMsgs] = useState([
-    { from: 'teacher', text: 'Hello! Post your doubts here and I\'ll get back to you soon.', time: '10:00 AM' },
-  ]);
-  const send = () => {
-    if (!text.trim()) return;
-    setMsgs(m => [...m, { from: 'student', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-    setText('');
-    setTimeout(() => {
-      setMsgs(m => [...m, { from: 'teacher', text: 'Thanks for your question! I\'ll review it and respond shortly. In the meantime, you can check the notes for this topic.', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
-    }, 1200);
+  const [selectedCourse, setSelectedCourse] = useState(courses[0] || null);
+  const [question, setQuestion] = useState('');
+  const [doubts, setDoubts] = useState([]);
+  const [loadingDoubts, setLoadingDoubts] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const selectedCourseId = selectedCourse?._id || selectedCourse?.id || '';
+
+  useEffect(() => {
+    if (!selectedCourse && courses.length) {
+      setSelectedCourse(courses[0]);
+    }
+  }, [courses, selectedCourse]);
+
+  useEffect(() => {
+    const fetchDoubts = async () => {
+      if (!selectedCourseId) {
+        setDoubts([]);
+        return;
+      }
+
+      setLoadingDoubts(true);
+      setError(null);
+
+      try {
+        const response = await api.get('/doubts', { params: { course: selectedCourseId, limit: 50 } });
+        setDoubts(response?.data?.doubts || []);
+      } catch (err) {
+        console.error('Failed to load doubts:', err);
+        setError('Unable to load doubt history.');
+      } finally {
+        setLoadingDoubts(false);
+      }
+    };
+
+    fetchDoubts();
+  }, [selectedCourseId]);
+
+  const handleSend = async () => {
+    if (!selectedCourseId || !question.trim()) return;
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await api.post('/doubts', {
+        course: selectedCourseId,
+        question: question.trim(),
+      });
+      setQuestion('');
+      const response = await api.get('/doubts', { params: { course: selectedCourseId, limit: 50 } });
+      setDoubts(response?.data?.doubts || []);
+    } catch (err) {
+      console.error('Failed to send doubt:', err);
+      setError(err.response?.data?.message || 'Unable to submit your doubt.');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
   return (
     <div>
       <h2 style={sectionTitle}>Ask Doubts</h2>
-      {/* Course picker */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-        {courses.map(c => (
-          <button key={c.id} onClick={() => setSelCourse(c)}
-            style={{
-              padding: '6px 14px', borderRadius: 100, border: '1px solid',
-              borderColor: selCourse?.id === c.id ? C.violet : C.border,
-              background: selCourse?.id === c.id ? C.violetSoft : 'transparent',
-              color: selCourse?.id === c.id ? C.violet : C.textMid,
-              fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            }}>{c.emoji} {c.title.split('–')[0].trim()}</button>
-        ))}
-      </div>
-      <Card style={{ height: 420, display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: selCourse?.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>{selCourse?.emoji}</div>
-          <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{selCourse?.title}</p>
-            <p style={{ margin: 0, fontSize: 11, color: C.textDim }}>{selCourse?.teacher} · <span style={{ color: C.emerald }}>● Online</span></p>
-          </div>
-        </div>
-        {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {msgs.map((m, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: m.from === 'student' ? 'flex-end' : 'flex-start' }}>
-              <div style={{
-                maxWidth: '70%', padding: '10px 14px', borderRadius: m.from === 'student' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                background: m.from === 'student' ? C.violet : C.surfaceHover,
-                color: C.text, fontSize: 13, lineHeight: 1.55,
+        {courses.map((course) => {
+          const courseId = course._id || course.id;
+          return (
+            <button key={courseId} onClick={() => setSelectedCourse(course)}
+              style={{
+                padding: '6px 14px', borderRadius: 100, border: '1px solid',
+                borderColor: selectedCourseId === courseId ? C.violet : C.border,
+                background: selectedCourseId === courseId ? C.violetSoft : 'transparent',
+                color: selectedCourseId === courseId ? C.violet : C.textMid,
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}>
-                <p style={{ margin: '0 0 4px' }}>{m.text}</p>
-                <p style={{ margin: 0, fontSize: 10, color: m.from === 'student' ? 'rgba(255,255,255,0.5)' : C.textDim, textAlign: 'right' }}>{m.time}</p>
-              </div>
+              {course.emoji} {course.title.split('–')[0].trim()}
+            </button>
+          );
+        })}
+      </div>
+
+      {!selectedCourse ? (
+        <Card style={{ padding: 24, minHeight: 300 }}>
+          <p style={{ margin: 0, color: C.textDim }}>Select a course to view your course-specific doubt history and ask new questions.</p>
+        </Card>
+      ) : (
+        <Card style={{ minHeight: 420, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: selectedCourse.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>{selectedCourse.emoji}</div>
+            <div>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{selectedCourse.title}</p>
+              <p style={{ margin: 0, fontSize: 11, color: C.textDim }}>{selectedCourse.teacher} · <span style={{ color: C.emerald }}>● Course doubt history</span></p>
             </div>
-          ))}
-        </div>
-        {/* Input */}
-        <div style={{ padding: '10px 14px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 8 }}>
-          <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
-            placeholder="Type your doubt here…"
-            style={{ flex: 1, padding: '8px 14px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceHover, color: C.text, fontSize: 13, outline: 'none' }} />
-          <button onClick={send} style={{ padding: '8px 16px', borderRadius: 10, background: C.violet, border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>Send</button>
-        </div>
-      </Card>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {loadingDoubts ? (
+              <p style={{ margin: 0, color: C.textDim }}>Loading doubts for this course…</p>
+            ) : error ? (
+              <p style={{ margin: 0, color: C.red }}>{error}</p>
+            ) : doubts.length === 0 ? (
+              <p style={{ margin: 0, color: C.textDim }}>No doubts found for this course yet. Ask your first question below.</p>
+            ) : (
+              doubts.map((doubt) => (
+                <div key={doubt._id} style={{ borderRadius: 16, padding: 14, background: C.surfaceHover, border: `1px solid ${C.border}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{doubt.question}</p>
+                    <Tag color={doubt.status === 'answered' ? C.emerald : doubt.status === 'resolved' ? C.cyan : C.violet} bg="rgba(124,58,237,0.08)">{doubt.status}</Tag>
+                  </div>
+                  {doubt.replies?.length > 0 && (
+                    <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                      {doubt.replies.map((reply) => (
+                        <div key={reply._id || reply.createdAt} style={{ padding: 10, borderRadius: 14, background: 'rgba(255,255,255,0.04)' }}>
+                          <p style={{ margin: '0 0 4px', fontSize: 12, color: C.textMid }}>{reply.text}</p>
+                          <p style={{ margin: 0, fontSize: 10, color: C.textDim }}>{reply.role === 'teacher' ? 'Teacher reply' : 'AI reply'}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          <div style={{ padding: '10px 14px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Ask your doubt about this course…"
+              style={{ flex: 1, minWidth: 0, padding: '10px 14px', borderRadius: 10, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontSize: 13, outline: 'none' }}
+            />
+            <button onClick={handleSend} disabled={submitting || !question.trim()} style={{ padding: '10px 16px', borderRadius: 10, background: C.violet, border: 'none', color: '#fff', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13 }}>
+              {submitting ? 'Sending…' : 'Send'}
+            </button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
@@ -751,7 +843,10 @@ export default function StudentPortal() {
 
         setCourses(enrolled);
         setAllCourses(catalog);
-        setNotes(notesResponse?.data?.notes || []);
+        setNotes((notesResponse?.data?.notes || []).map((note) => ({
+          ...note,
+          id: note._id || note.id,
+        })));
 
         const videoResponses = await Promise.all(
           enrolled.map((course) => api.get(`/videos/course/${course._id}`).then((response) => ({ courseId: course._id, videos: response?.data?.videos || [] })).catch(() => ({ courseId: course._id, videos: [] })))
@@ -843,7 +938,7 @@ export default function StudentPortal() {
         <div style={{ padding: collapsed ? '18px 14px' : '18px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 64 }}>
           {!collapsed && (
             <span style={{ fontSize: 15, fontWeight: 800, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-              <span style={{ color: C.violet }}>Study</span>Planet
+              <span style={{ color: C.violet }}>Learn</span>Sphere
             </span>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

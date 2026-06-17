@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get('/', protect, getDoubts);
 router.post('/', protect, authorize('student'), createDoubt);
-router.post('/:id/reply', protect, replyToDoubt);
+router.post('/:id/reply', protect, authorize('teacher', 'admin'), replyToDoubt);
 router.put('/:id/resolve', protect, resolveDoubt);
 
 export default router;

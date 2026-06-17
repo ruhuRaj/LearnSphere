@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import { Doubt } from '../models/Other.js';
+import Course from '../models/Course.js';
 import User from '../models/User.js';
 
 // @desc    Get doubts (with filters)
@@ -10,9 +12,12 @@ export const getDoubts = async (req, res, next) => {
     if (course) query.course = course;
     if (status) query.status = status;
 
-    // Students see own doubts, teachers see all for their courses
+    // Students see their own doubts, teachers see doubts for courses they teach
     if (req.user.role === 'student') {
       query.student = req.user._id;
+    } else if (req.user.role === 'teacher') {
+      const teacherCourses = await Course.find({ teacher: req.user._id }).select('_id');
+      query.course = { $in: teacherCourses.map((course) => course._id) };
     }
 
     const total = await Doubt.countDocuments(query);
@@ -34,8 +39,30 @@ export const getDoubts = async (req, res, next) => {
 // @route   POST /api/doubts
 export const createDoubt = async (req, res, next) => {
   try {
-    req.body.student = req.user._id;
-    const doubt = await Doubt.create(req.body);
+    const { course, question, topic, subject } = req.body;
+    if (!question || !question.trim()) {
+      return res.status(400).json({ success: false, message: 'Question text is required' });
+    }
+
+    if (course && !mongoose.Types.ObjectId.isValid(course)) {
+      return res.status(400).json({ success: false, message: 'Invalid course ID' });
+    }
+
+    if (course) {
+      const exists = await Course.findById(course).select('_id');
+      if (!exists) {
+        return res.status(404).json({ success: false, message: 'Course not found' });
+      }
+    }
+
+    const doubt = await Doubt.create({
+      student: req.user._id,
+      course: course || undefined,
+      question: question.trim(),
+      topic,
+      subject,
+    });
+
     const populated = await doubt.populate('student', 'name avatar');
     res.status(201).json({ success: true, doubt: populated });
   } catch (error) {
@@ -47,8 +74,14 @@ export const createDoubt = async (req, res, next) => {
 // @route   POST /api/doubts/:id/reply
 export const replyToDoubt = async (req, res, next) => {
   try {
-    const doubt = await Doubt.findById(req.params.id);
+    const doubt = await Doubt.findById(req.params.id).populate('course', 'teacher');
     if (!doubt) return res.status(404).json({ success: false, message: 'Doubt not found' });
+
+    if (req.user.role === 'teacher') {
+      if (!doubt.course || String(doubt.course.teacher) !== String(req.user._id)) {
+        return res.status(403).json({ success: false, message: 'You are not authorized to reply to this doubt' });
+      }
+    }
 
     doubt.replies.push({
       user: req.user._id,

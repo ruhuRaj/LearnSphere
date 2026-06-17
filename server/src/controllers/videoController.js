@@ -1,6 +1,14 @@
+import fs from 'fs';
 import Video from '../models/Video.js';
 import Course from '../models/Course.js';
 import { Comment } from '../models/Other.js';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // @desc    Get videos for a course
 // @route   GET /api/videos/course/:courseId
@@ -38,7 +46,35 @@ export const createVideo = async (req, res, next) => {
     if (course.teacher.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
-    const video = await Video.create(req.body);
+    const videoData = {
+      title: req.body.title,
+      course: req.body.course,
+      chapter: req.body.chapter,
+      duration: req.body.duration || 0,
+      description: req.body.description || '',
+      order: req.body.order || 0,
+      isPublished: req.body.isPublished !== undefined ? req.body.isPublished : true,
+    };
+
+    // If a file was uploaded, push it to Cloudinary (video resource)
+    if (req.file) {
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: 'video',
+        folder: 'learn-sphere/videos',
+        use_filename: true,
+        unique_filename: false,
+        overwrite: false,
+      });
+      videoData.url = uploadResult.secure_url;
+      videoData.publicId = uploadResult.public_id;
+
+      // remove temp file
+      try { fs.unlinkSync(req.file.path); } catch (e) { console.warn('Failed to remove temp video file:', e.message); }
+    } else if (req.body.url) {
+      videoData.url = req.body.url;
+    }
+
+    const video = await Video.create(videoData);
     course.totalLessons += 1;
     await course.save();
     res.status(201).json({ success: true, video });
@@ -65,6 +101,15 @@ export const deleteVideo = async (req, res, next) => {
   try {
     const video = await Video.findById(req.params.id);
     if (!video) return res.status(404).json({ success: false, message: 'Video not found' });
+    // remove from Cloudinary if present
+    if (video.publicId) {
+      try {
+        await cloudinary.uploader.destroy(video.publicId, { resource_type: 'video' });
+      } catch (err) {
+        console.warn('Cloudinary delete failed for video:', err.message);
+      }
+    }
+
     await video.deleteOne();
     res.json({ success: true, message: 'Video deleted' });
   } catch (error) {

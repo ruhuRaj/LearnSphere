@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
@@ -60,36 +60,122 @@ export default function TeacherDashboard() {
   const [collapsed, setCollapsed] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [videoForm, setVideoForm] = useState({ title: '', course: '', chapter: '', url: '', duration: 0 });
-  const [notesForm, setNotesForm] = useState({ title: '', course: '', chapter: '', content: '', type: 'markdown' });
+  const [videoFile, setVideoFile] = useState(null);
+  const [notesForm, setNotesForm] = useState({ title: '', course: '', chapter: '', subject: '', content: '', type: 'markdown' });
+  const [notesFile, setNotesFile] = useState(null);
+  const [teacherNotes, setTeacherNotes] = useState([]);
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState(null);
+  const [teacherVideos, setTeacherVideos] = useState([]);
+  const [loadingVideos, setLoadingVideos] = useState(false);
+  const [deletingVideoId, setDeletingVideoId] = useState(null);
+  const [videoHistoryCourse, setVideoHistoryCourse] = useState('');
+  const [videoHistoryChapter, setVideoHistoryChapter] = useState('');
   const [testForm, setTestForm] = useState({ title: '', course: '', duration: 30, totalMarks: 40, type: 'topic' });
   const [liveForm, setLiveForm] = useState({ title: '', course: '', scheduledAt: new Date(Date.now() + 3600000).toISOString().slice(0, 16), duration: 60 });
+  const [allDoubts, setAllDoubts] = useState([]);
+  const [doubtReplyDrafts, setDoubtReplyDrafts] = useState({});
+  const [replyingId, setReplyingId] = useState(null);
+  const [busyReplyId, setBusyReplyId] = useState(null);
+
+  const loadDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const [coursesResponse, doubtsResponse] = await Promise.all([
+        api.get('/courses/my-courses'),
+        api.get('/doubts', { params: { limit: 50 } }),
+      ]);
+
+      const courses = coursesResponse?.data?.courses || [];
+      const doubts = doubtsResponse?.data?.doubts || [];
+
+      setTeacherCourses(courses);
+      setAllDoubts(doubts);
+      setDashboardData(buildTeacherDashboardData(courses, doubts));
+    } catch (error) {
+      console.error('Failed to load teacher dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadTeacherNotes = async () => {
+    try {
+      setLoadingNotes(true);
+      const response = await api.get('/notes');
+      setTeacherNotes(response?.data?.notes?.map((note) => ({ ...note, id: note._id || note.id })) || []);
+    } catch (error) {
+      console.error('Failed to load teacher notes:', error);
+    } finally {
+      setLoadingNotes(false);
+    }
+  };
+
+  const loadTeacherVideos = async (courses = teacherCourses) => {
+    try {
+      setLoadingVideos(true);
+      const courseList = (courses || []).filter((course) => course?._id || course?.id);
+      const videoResponses = await Promise.all(
+        courseList.map((course) => api.get(`/videos/course/${course._id || course.id}`).then((response) => ({ courseId: course._id || course.id, videos: response?.data?.videos || [] })).catch(() => ({ courseId: course._id || course.id, videos: [] })))
+      );
+      const allVideos = videoResponses.flatMap(({ videos }) => videos.map((video) => ({ ...video, id: video._id || video.id })));
+      setTeacherVideos(allVideos);
+      if (!videoHistoryCourse && courseList.length) {
+        setVideoHistoryCourse(courseList[0]._id || courseList[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to load teacher videos:', error);
+    } finally {
+      setLoadingVideos(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    const didConfirm = window.confirm('Delete this note from your uploads?');
+    if (!didConfirm) return;
+
+    try {
+      setDeletingNoteId(noteId);
+      await api.delete(`/notes/${noteId}`);
+      await loadTeacherNotes();
+      toast.success('Note deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+      toast.error(error.response?.data?.message || 'Could not delete note');
+    } finally {
+      setDeletingNoteId(null);
+    }
+  };
+
+  const handleDeleteVideo = async (videoId) => {
+    const didConfirm = window.confirm('Delete this video from your uploads?');
+    if (!didConfirm) return;
+
+    try {
+      setDeletingVideoId(videoId);
+      await api.delete(`/videos/${videoId}`);
+      await loadTeacherVideos(teacherCourses);
+      toast.success('Video deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete video:', error);
+      toast.error(error.response?.data?.message || 'Could not delete video');
+    } finally {
+      setDeletingVideoId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (teacherCourses.length) {
+      loadTeacherVideos(teacherCourses);
+    }
+  }, [teacherCourses]);
 
   useEffect(() => {
     let mounted = true;
 
-    const loadDashboardData = async () => {
-      try {
-        const [coursesResponse, doubtsResponse] = await Promise.all([
-          api.get('/courses/my-courses'),
-          api.get('/doubts', { params: { limit: 5 } }),
-        ]);
-
-        if (!mounted) return;
-
-        const courses = coursesResponse?.data?.courses || [];
-        const doubts = doubtsResponse?.data?.doubts || [];
-
-        setTeacherCourses(courses);
-        setDashboardData(buildTeacherDashboardData(courses, doubts));
-      } catch (error) {
-        console.error('Failed to load teacher dashboard data:', error);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-
     if (user?.role === 'teacher') {
       loadDashboardData();
+      loadTeacherNotes();
     } else {
       setIsLoading(false);
     }
@@ -99,6 +185,28 @@ export default function TeacherDashboard() {
     };
   }, [user]);
 
+  const handleReplySubmit = async (doubtId) => {
+    const replyText = (doubtReplyDrafts[doubtId] || '').trim();
+    if (!replyText) {
+      toast.error('Please enter a reply before submitting.');
+      return;
+    }
+
+    try {
+      setBusyReplyId(doubtId);
+      await api.post(`/doubts/${doubtId}/reply`, { text: replyText });
+      setDoubtReplyDrafts((prev) => ({ ...prev, [doubtId]: '' }));
+      setReplyingId(null);
+      await loadDashboardData();
+      toast.success('Doubt replied successfully');
+    } catch (error) {
+      console.error('Reply submission failed:', error);
+      toast.error(error.response?.data?.message || 'Failed to send reply.');
+    } finally {
+      setBusyReplyId(null);
+    }
+  };
+
   const submitAction = async (actionType = activeAction) => {
     if (!actionType) return;
 
@@ -106,20 +214,56 @@ export default function TeacherDashboard() {
       setActionBusy(true);
 
       if (actionType === 'video') {
-        if (!videoForm.title || !videoForm.course || !videoForm.url) {
-          toast.error('Please fill title, course, and video URL');
+        if (!videoForm.title || !videoForm.course || (!videoForm.url && !videoFile)) {
+          toast.error('Please fill title, course, and video URL or upload a video file');
           return;
         }
-        await api.post('/videos', { ...videoForm, duration: Number(videoForm.duration || 0), order: 1 });
-        toast.success('Video uploaded successfully');
+
+        try {
+          if (videoFile) {
+            const formData = new FormData();
+            formData.append('title', videoForm.title);
+            formData.append('course', videoForm.course);
+            formData.append('chapter', videoForm.chapter);
+            formData.append('duration', String(videoForm.duration || 0));
+            formData.append('description', videoForm.description || '');
+            formData.append('isPublished', 'true');
+            formData.append('file', videoFile);
+            await api.post('/videos', formData);
+          } else {
+            await api.post('/videos', { ...videoForm, duration: Number(videoForm.duration || 0), order: 1, isPublished: true });
+          }
+
+          setVideoForm({ title: '', course: '', chapter: '', url: '', duration: 0 });
+          setVideoFile(null);
+          await loadTeacherVideos(teacherCourses);
+          toast.success('Video uploaded successfully');
+        } catch (e) {
+          throw e;
+        }
       }
 
       if (actionType === 'notes') {
-        if (!notesForm.title || !notesForm.course || !notesForm.content) {
-          toast.error('Please fill title, course, and note content');
+        if (!notesForm.title || !notesForm.course || (!notesForm.content && !notesFile)) {
+          toast.error('Please fill title, course, and note content or upload a PDF');
           return;
         }
-        await api.post('/notes', { ...notesForm });
+
+        const formData = new FormData();
+        formData.append('title', notesForm.title);
+        formData.append('course', notesForm.course);
+        formData.append('chapter', notesForm.chapter);
+        formData.append('subject', notesForm.subject);
+        formData.append('content', notesForm.content);
+        formData.append('type', notesFile ? 'pdf' : notesForm.type || 'markdown');
+        if (notesFile) {
+          formData.append('file', notesFile);
+        }
+
+        await api.post('/notes', formData);
+        setNotesFile(null);
+        setNotesForm({ title: '', course: '', chapter: '', subject: '', content: '', type: 'markdown' });
+        await loadTeacherNotes();
         toast.success('Notes saved successfully');
       }
 
@@ -166,6 +310,22 @@ export default function TeacherDashboard() {
       setActionBusy(false);
     }
   };
+
+  const filteredTeacherVideos = useMemo(() => {
+    return teacherVideos.filter((video) => {
+      const courseId = video.course?._id || video.course;
+      const matchesCourse = !videoHistoryCourse || courseId === videoHistoryCourse;
+      const matchesChapter = !videoHistoryChapter || (video.chapter || 'General') === videoHistoryChapter;
+      return matchesCourse && matchesChapter;
+    });
+  }, [teacherVideos, videoHistoryCourse, videoHistoryChapter]);
+
+  const availableVideoChapters = useMemo(() => {
+    const chapters = teacherVideos
+      .filter((video) => !videoHistoryCourse || (video.course?._id || video.course) === videoHistoryCourse)
+      .map((video) => video.chapter || 'General');
+    return [...new Set(chapters)];
+  }, [teacherVideos, videoHistoryCourse]);
 
   const actionButtons = [
     { icon: HiOutlinePlay, label: 'Upload Video', color: '#6366f1', action: () => setActiveAction('video') },
@@ -230,9 +390,112 @@ export default function TeacherDashboard() {
         </div>
       </div>
     ),
-    notes: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Upload Notes</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Attach notes to the course you teach.</p><div className="space-y-3"><input className="input" placeholder="Notes title" value={notesForm.title} onChange={(e) => setNotesForm({ ...notesForm, title: e.target.value })} /><select className="input" value={notesForm.course} onChange={(e) => setNotesForm({ ...notesForm, course: e.target.value })}><option value="">Select a course</option>{teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}</select><input className="input" placeholder="Chapter name" value={notesForm.chapter} onChange={(e) => setNotesForm({ ...notesForm, chapter: e.target.value })} /><textarea className="input" rows={5} placeholder="Write your notes here" value={notesForm.content} onChange={(e) => setNotesForm({ ...notesForm, content: e.target.value })} /></div><button onClick={() => submitAction('notes')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Saving...' : 'Save Notes'}</button></div>,
-    videos: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Upload Video</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Share lectures with your students.</p><div className="space-y-3"><input className="input" placeholder="Video title" value={videoForm.title} onChange={(e) => setVideoForm({ ...videoForm, title: e.target.value })} /><select className="input" value={videoForm.course} onChange={(e) => setVideoForm({ ...videoForm, course: e.target.value })}><option value="">Select a course</option>{teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}</select><input className="input" placeholder="Chapter name" value={videoForm.chapter} onChange={(e) => setVideoForm({ ...videoForm, chapter: e.target.value })} /><input className="input" placeholder="Video URL (YouTube / MP4)" value={videoForm.url} onChange={(e) => setVideoForm({ ...videoForm, url: e.target.value })} /><input className="input" type="number" placeholder="Duration (seconds)" value={videoForm.duration} onChange={(e) => setVideoForm({ ...videoForm, duration: Number(e.target.value) })} /></div><button onClick={() => submitAction('video')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Uploading...' : 'Upload Video'}</button></div>,
-    doubts: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Reply Doubts</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Answer doubts from your students in one place.</p>{dashboardData.recentDoubts.length ? dashboardData.recentDoubts.map((doubt) => <div key={doubt.id} className="rounded-xl p-4 mb-3" style={{ background: 'var(--bg-tertiary)' }}><p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{doubt.question}</p><p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{doubt.studentName} • {doubt.courseTitle}</p><button onClick={() => toast.success('Reply feature ready for integration')} className="btn btn-secondary btn-sm mt-3">Reply</button></div>) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No doubts available yet.</p>}</div>,
+    notes: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Upload Notes</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Attach notes to the course you teach. You can upload lesson/topic-wise PDF notes or add markdown notes, and manage your upload history below.</p><div className="grid xl:grid-cols-[1.1fr_0.9fr] gap-6">
+        <div className="space-y-3">
+          <input className="input" placeholder="Notes title" value={notesForm.title} onChange={(e) => setNotesForm({ ...notesForm, title: e.target.value })} />
+          <select className="input" value={notesForm.course} onChange={(e) => setNotesForm({ ...notesForm, course: e.target.value })}>
+            <option value="">Select a course</option>
+            {teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}
+          </select>
+          <input className="input" placeholder="Lesson / Chapter name" value={notesForm.chapter} onChange={(e) => setNotesForm({ ...notesForm, chapter: e.target.value })} />
+          <input className="input" placeholder="Topic / Subject" value={notesForm.subject} onChange={(e) => setNotesForm({ ...notesForm, subject: e.target.value })} />
+          <textarea className="input" rows={4} placeholder="Write a summary or notes description" value={notesForm.content} onChange={(e) => setNotesForm({ ...notesForm, content: e.target.value })} />
+          <label className="input" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 12, cursor: 'pointer' }}>
+            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Upload PDF file (optional)</span>
+            <input type="file" accept="application/pdf" onChange={(e) => setNotesFile(e.target.files?.[0] || null)} />
+          </label>
+          {notesFile && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Selected file: {notesFile.name}</p>}
+          <button onClick={() => submitAction('notes')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Saving...' : 'Save Notes'}</button>
+        </div>
+
+        <div className="space-y-4" style={{ minHeight: 420 }}>
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold font-[Outfit]" style={{ color: 'var(--text-primary)' }}>Uploaded Notes</h3>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{loadingNotes ? 'Refreshing…' : `${teacherNotes.length} items`}</span>
+            </div>
+            {loadingNotes ? (
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading your notes...</p>
+            ) : teacherNotes.length ? (
+              <div className="space-y-3">
+                {teacherNotes.map((note) => (
+                  <div key={note.id} className="rounded-2xl p-4" style={{ background: 'var(--bg-tertiary)' }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{note.title || 'Untitled note'}</p>
+                        <p className="text-[10px] mt-1" style={{ color: 'var(--text-tertiary)' }}>{note.course?.title || note.course || 'Unknown course'} • {note.chapter || note.subject || 'General'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>{new Date(note.createdAt).toLocaleDateString('en-IN')}</p>
+                        <span className="badge badge-outline text-[10px]" style={{ color: (note.localPath || note.fileUrl) ? 'var(--success)' : 'var(--primary)' }}>{(note.localPath || note.fileUrl) ? 'PDF' : 'Markdown'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 mt-3">
+                      {(note.localPath || note.fileUrl) ? (
+                        <a href={note.localPath || note.fileUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open PDF</a>
+                      ) : (
+                        <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>No file attached</span>
+                      )}
+                      <button onClick={() => handleDeleteNote(note.id)} disabled={deletingNoteId === note.id} className="btn btn-error btn-sm">
+                        {deletingNoteId === note.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No uploaded notes yet. Your uploaded PDFs and summaries will appear here.</p>
+            )}
+          </div>
+        </div>
+      </div></div>,
+    videos: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Upload Video</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Share lectures with your students. Upload a direct video URL or a YouTube link and keep a history below.</p><div className="grid xl:grid-cols-[1.1fr_0.9fr] gap-6"><div className="space-y-3"><input className="input" placeholder="Video title" value={videoForm.title} onChange={(e) => setVideoForm({ ...videoForm, title: e.target.value })} /><select className="input" value={videoForm.course} onChange={(e) => setVideoForm({ ...videoForm, course: e.target.value })}><option value="">Select a course</option>{teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}</select><input className="input" placeholder="Chapter name" value={videoForm.chapter} onChange={(e) => setVideoForm({ ...videoForm, chapter: e.target.value })} /><input className="input" placeholder="Video URL (YouTube / MP4)" value={videoForm.url} onChange={(e) => setVideoForm({ ...videoForm, url: e.target.value })} /><input className="input" type="number" placeholder="Duration (seconds)" value={videoForm.duration} onChange={(e) => setVideoForm({ ...videoForm, duration: Number(e.target.value) })} /><button onClick={() => submitAction('video')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Uploading...' : 'Upload Video'}</button></div><div className="space-y-4" style={{ minHeight: 420 }}><div className="flex items-center justify-between mb-3"><h3 className="font-semibold font-[Outfit]" style={{ color: 'var(--text-primary)' }}>Uploaded Videos</h3><span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{loadingVideos ? 'Refreshing…' : `${teacherVideos.length} items`}</span></div><select className="input" value={videoHistoryCourse} onChange={(e) => { setVideoHistoryCourse(e.target.value); setVideoHistoryChapter(''); }}><option value="">All courses</option>{teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}</select>{availableVideoChapters.length > 0 && <div className="flex flex-wrap gap-2">{availableVideoChapters.map((chapter) => <button key={chapter} onClick={() => setVideoHistoryChapter(chapter === 'General' ? '' : chapter)} className="btn btn-ghost btn-sm" style={{ borderColor: (videoHistoryChapter || 'General') === chapter ? 'var(--primary)' : 'var(--border-color)', color: (videoHistoryChapter || 'General') === chapter ? 'var(--primary)' : 'var(--text-secondary)' }}>{chapter}</button>)}</div>}{loadingVideos ? <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading your videos...</p> : filteredTeacherVideos.length ? <div className="space-y-3">{filteredTeacherVideos.map((video) => <div key={video.id} className="rounded-2xl p-4" style={{ background: 'var(--bg-tertiary)' }}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{video.title || 'Untitled video'}</p><p className="text-[10px] mt-1" style={{ color: 'var(--text-tertiary)' }}>{video.chapter || 'General'} • {new Date(video.createdAt).toLocaleDateString('en-IN')}</p></div><span className="badge badge-outline text-[10px]" style={{ color: 'var(--success)' }}>Video</span></div><div className="flex items-center justify-between gap-3 mt-3"><a href={video.url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open Link</a><button onClick={() => handleDeleteVideo(video.id)} disabled={deletingVideoId === video.id} className="btn btn-error btn-sm">{deletingVideoId === video.id ? 'Deleting…' : 'Delete'}</button></div></div>)}</div> : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No videos for this course yet. Uploaded videos will appear here.</p>}</div></div></div>,
+    doubts: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
+      <h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Reply Doubts</h2>
+      <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Answer doubts from your students in one place.</p>
+      {allDoubts.length ? allDoubts.map((doubt) => (
+        <div key={doubt._id} className="rounded-xl p-4 mb-3" style={{ background: 'var(--bg-tertiary)' }}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{doubt.question}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{doubt.student?.name || 'Student'} • {doubt.course?.title || 'General'}</p>
+            </div>
+            <span className="badge badge-outline text-[10px]" style={{ color: doubt.status === 'answered' ? 'var(--success)' : doubt.status === 'resolved' ? 'var(--secondary)' : 'var(--primary)' }}>{doubt.status || 'open'}</span>
+          </div>
+
+          {doubt.replies?.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {doubt.replies.map((reply) => (
+                <div key={reply._id || reply.createdAt} className="rounded-2xl p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{reply.text}</p>
+                  <p className="text-[10px] mt-1" style={{ color: 'var(--text-tertiary)' }}>{reply.role === 'teacher' ? 'Teacher reply' : 'AI reply'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {replyingId === doubt._id ? (
+            <div className="mt-4 space-y-3">
+              <textarea
+                value={doubtReplyDrafts[doubt._id] || ''}
+                onChange={(e) => setDoubtReplyDrafts((prev) => ({ ...prev, [doubt._id]: e.target.value }))}
+                rows={3}
+                placeholder="Write your reply..."
+                className="input w-full"
+              />
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleReplySubmit(doubt._id)} disabled={busyReplyId === doubt._id} className="btn btn-primary btn-sm">
+                  {busyReplyId === doubt._id ? 'Sending...' : 'Send Reply'}
+                </button>
+                <button onClick={() => setReplyingId(null)} className="btn btn-ghost btn-sm">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setReplyingId(doubt._id)} className="btn btn-secondary btn-sm mt-4">Reply</button>
+          )}
+        </div>
+      )) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No doubts available yet.</p>}
+    </div>,
     'create-course': <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Course</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Set up your next class and publish it instantly.</p><Link to="/teacher/create-course" className="btn btn-primary btn-sm">Open Course Builder</Link></div>,
     tests: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Test</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Generate or publish tests for your courses.</p><div className="space-y-3"><input className="input" placeholder="Test title" value={testForm.title} onChange={(e) => setTestForm({ ...testForm, title: e.target.value })} /><select className="input" value={testForm.course} onChange={(e) => setTestForm({ ...testForm, course: e.target.value })}><option value="">Select a course</option>{teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}</select><div className="grid grid-cols-2 gap-3"><input className="input" type="number" value={testForm.duration} onChange={(e) => setTestForm({ ...testForm, duration: Number(e.target.value) })} placeholder="Duration (min)" /><input className="input" type="number" value={testForm.totalMarks} onChange={(e) => setTestForm({ ...testForm, totalMarks: Number(e.target.value) })} placeholder="Total marks" /></div></div><button onClick={() => submitAction('test')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Creating...' : 'Create Test'}</button></div>,
     courses: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>My Courses</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>All courses created and managed by you.</p><div className="space-y-3">{teacherCourses.length ? teacherCourses.map((course) => <div key={course._id} className="rounded-xl p-4" style={{ background: 'var(--bg-tertiary)' }}><h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{course.title}</h3><p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{course.category || 'Course'} • {course.students || 0} learners</p></div>) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No teacher courses found yet.</p>}</div></div>,
@@ -243,7 +506,7 @@ export default function TeacherDashboard() {
     <div style={{ display: 'flex', height: '100vh', background: C.bg, fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
       <aside style={{ width: collapsed ? 70 : 240, flexShrink: 0, background: C.surface, borderRight: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', transition: 'width 0.22s', overflow: 'hidden' }}>
         <div style={{ padding: collapsed ? '16px 10px' : '16px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 64 }}>
-          {!collapsed && <span style={{ fontSize: 15, fontWeight: 800, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}><span style={{ color: C.violet }}>Teach</span>Sphere</span>}
+          {!collapsed && <span style={{ fontSize: 15, fontWeight: 800, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}><span style={{ color: C.violet }}>Learn</span>Sphere</span>}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button onClick={() => dispatch(toggleTheme())} title="Toggle theme" style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{theme === 'dark' ? '☀️' : '🌙'}</button>
             <button onClick={() => setCollapsed(v => !v)} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon d={collapsed ? 'M13 5l7 7-7 7M5 5l7 7-7 7' : 'M11 19l-7-7 7-7m8 14l-7-7 7-7'} size={14} color={C.textMid} /></button>

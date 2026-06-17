@@ -6,6 +6,7 @@ const notesSchema = new mongoose.Schema({
   chapter: { type: String },
   content: { type: String }, // Markdown content
   fileUrl: { type: String }, // PDF URL
+  localPath: { type: String }, // Local upload path (served via /uploads)
   publicId: { type: String }, // Cloudinary public ID
   type: { type: String, enum: ['pdf', 'markdown', 'ai-generated'], default: 'markdown' },
   subject: { type: String },

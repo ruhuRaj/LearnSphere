@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
@@ -5,7 +6,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
 
 // Route imports
 import authRoutes from './routes/authRoutes.js';
@@ -22,8 +22,6 @@ import notesRoutes from './routes/notesRoutes.js';
 import forumRoutes from './routes/forumRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import { errorHandler } from './middleware/auth.js';
-
-dotenv.config();
 
 const app = express();
 
