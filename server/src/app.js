@@ -104,7 +104,9 @@ app.get('/api/health', (req, res) => {
 // ── Error Handler (must be before 404 to catch async throws) ──
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error('Error:', err.message);
+  // Log full error for debugging (message + stack)
+  console.error('Error:', err && err.message);
+  if (err && err.stack) console.error(err.stack);
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {

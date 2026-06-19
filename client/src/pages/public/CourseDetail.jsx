@@ -112,12 +112,19 @@ export default function CourseDetail() {
     }
   };
 
+  const getCurriculumLabel = (language) => {
+    const normalized = (language || 'English').toLowerCase();
+    if (normalized === 'hindi') return 'Hindi';
+    if (normalized === 'both' || normalized === 'hinglish') return 'Hinglish';
+    return 'English';
+  };
+
   const features = [
-    `${lessonsCount || 'Live'} video lessons`,
-    `${course.language || 'English'} curriculum`,
+    `${lessonsCount || 'Live'} Video Lessons`,
+    `${getCurriculumLabel(course.language)} Curriculum`,
     ...(course.tags || []).slice(0, 3),
     ...(course.subjects || []).slice(0, 2),
-    'AI-powered practice support',
+    'AI-Powered Support',
   ].filter(Boolean);
 
   return (

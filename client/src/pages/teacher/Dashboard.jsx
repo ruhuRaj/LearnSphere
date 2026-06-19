@@ -498,7 +498,33 @@ export default function TeacherDashboard() {
     </div>,
     'create-course': <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Course</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Set up your next class and publish it instantly.</p><Link to="/teacher/create-course" className="btn btn-primary btn-sm">Open Course Builder</Link></div>,
     tests: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Test</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Generate or publish tests for your courses.</p><div className="space-y-3"><input className="input" placeholder="Test title" value={testForm.title} onChange={(e) => setTestForm({ ...testForm, title: e.target.value })} /><select className="input" value={testForm.course} onChange={(e) => setTestForm({ ...testForm, course: e.target.value })}><option value="">Select a course</option>{teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}</select><div className="grid grid-cols-2 gap-3"><input className="input" type="number" value={testForm.duration} onChange={(e) => setTestForm({ ...testForm, duration: Number(e.target.value) })} placeholder="Duration (min)" /><input className="input" type="number" value={testForm.totalMarks} onChange={(e) => setTestForm({ ...testForm, totalMarks: Number(e.target.value) })} placeholder="Total marks" /></div></div><button onClick={() => submitAction('test')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Creating...' : 'Create Test'}</button></div>,
-    courses: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>My Courses</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>All courses created and managed by you.</p><div className="space-y-3">{teacherCourses.length ? teacherCourses.map((course) => <div key={course._id} className="rounded-xl p-4" style={{ background: 'var(--bg-tertiary)' }}><h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{course.title}</h3><p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{course.category || 'Course'} • {course.students || 0} learners</p></div>) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No teacher courses found yet.</p>}</div></div>,
+    courses: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>My Courses</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>All courses created and managed by you.</p><div className="space-y-3">{teacherCourses.length ? teacherCourses.map((course) => {
+      const learners = Number(course.totalStudents) || 0;
+      return (
+        <div key={course._id} className="rounded-3xl p-5 border border-transparent hover:border-violet-300 transition duration-200" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))' }}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{course.title}</h3>
+              <p className="text-[11px] uppercase tracking-[0.18em] mt-1" style={{ color: 'var(--secondary)' }}>{course.category || 'Course'}</p>
+            </div>
+            <span className="badge badge-outline text-[11px]" style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }}>{learners} learner{learners === 1 ? '' : 's'}</span>
+          </div>
+          <div className="mt-4 grid sm:grid-cols-[1fr_auto] gap-3 items-center">
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              {learners > 0 ? `${learners.toLocaleString()} enrolled learner${learners === 1 ? '' : 's'}` : 'No learners yet, share your course to start enrolling.'}
+            </p>
+            <div className="inline-flex items-center gap-2 rounded-full px-3 py-2" style={{ background: 'rgba(99,102,241,0.08)', color: 'var(--primary)' }}>
+              <HiOutlineUsers className="w-4 h-4" />
+              <span className="text-xs font-semibold">{learners.toLocaleString()}</span>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-3 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+            <span>{course.totalLessons || 0} lessons</span>
+            <span>★ {Number(course.rating || 0).toFixed(1)}</span>
+          </div>
+        </div>
+      );
+    }) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No teacher courses found yet.</p>}</div></div>,
     live: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Go Online</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Schedule a live class and start teaching in real time.</p><div className="space-y-3"><input className="input" placeholder="Live class title" value={liveForm.title} onChange={(e) => setLiveForm({ ...liveForm, title: e.target.value })} /><select className="input" value={liveForm.course} onChange={(e) => setLiveForm({ ...liveForm, course: e.target.value })}><option value="">Select a course</option>{teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}</select><input className="input" type="datetime-local" value={liveForm.scheduledAt} onChange={(e) => setLiveForm({ ...liveForm, scheduledAt: e.target.value })} /><input className="input" type="number" value={liveForm.duration} onChange={(e) => setLiveForm({ ...liveForm, duration: Number(e.target.value) })} placeholder="Duration (minutes)" /></div><button onClick={() => submitAction('live')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Scheduling...' : 'Start Live Class'}</button></div>,
   };
 

@@ -1,24 +1,56 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { HiOutlineUser, HiOutlineMail, HiOutlinePhone, HiOutlineAcademicCap, HiOutlinePencil, HiOutlineCamera, HiOutlineShieldCheck, HiOutlineLightningBolt } from 'react-icons/hi';
 import toast from 'react-hot-toast';
+import { loadUser, updateProfile } from '../../features/authSlice';
 
 export default function TeacherProfile() {
-  const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const { user, isLoading } = useSelector((state) => state.auth);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    name: user?.name || 'Teacher User',
-    email: user?.email || 'teacher@learnsphere.com',
-    phone: user?.phone || '+91 98765 43210',
-    bio: 'Mentor and course creator for live learning.',
-    expertise: 'Mathematics',
-    language: 'English',
+    name: '',
+    email: '',
+    phone: '',
+    bio: '',
+    expertise: '',
+    language: 'en',
   });
 
-  const handleSave = () => {
-    setEditing(false);
-    toast.success('Profile updated successfully!');
+  useEffect(() => {
+    if (!user) {
+      dispatch(loadUser());
+    }
+  }, [dispatch, user]);
+
+  useEffect(() => {
+    if (user) {
+      setForm({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        bio: user.bio || user.description || '',
+        expertise: user.expertise || 'Mathematics',
+        language: user.language || 'en',
+      });
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    try {
+      await dispatch(updateProfile({
+        name: form.name,
+        phone: form.phone,
+        bio: form.bio,
+        expertise: form.expertise,
+        language: form.language,
+      })).unwrap();
+      setEditing(false);
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      toast.error(error || 'Could not update profile');
+    }
   };
 
   return (
@@ -78,6 +110,10 @@ export default function TeacherProfile() {
                     <input className="input pl-10" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={!editing} />
                   </div>
                 </div>
+                <div>
+                  <label className="label">Bio</label>
+                  <textarea className="input h-32 resize-none" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} disabled={!editing} />
+                </div>
                 {editing && <button onClick={handleSave} className="btn btn-primary w-full">Save Changes</button>}
               </div>
             </div>
@@ -91,15 +127,15 @@ export default function TeacherProfile() {
                     <div className="relative">
                       <HiOutlineAcademicCap className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
                       <select className="input pl-10" value={form.expertise} onChange={(e) => setForm({ ...form, expertise: e.target.value })} disabled={!editing} style={{ appearance: 'auto' }}>
-                        {['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science'].map((t) => <option key={t}>{t}</option>)}
+                        {['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Information Technology'].map((t) => <option key={t}>{t}</option>)}
                       </select>
                     </div>
                   </div>
                   <div>
                     <label className="label">Preferred Language</label>
                     <select className="input" value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })} disabled={!editing} style={{ appearance: 'auto' }}>
-                      <option>English</option>
-                      <option>Hindi</option>
+                      <option value="en">English</option>
+                      <option value="hi">Hindi</option>
                     </select>
                   </div>
                 </div>

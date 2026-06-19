@@ -26,6 +26,8 @@ export default function CreateCourse() {
     price: '', discountPrice: '', language: 'English', tags: '',
     chapters: [{ title: '', topics: '' }],
   });
+  const [thumbnail, setThumbnail] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState('');
 
   const addChapter = () => setForm({ ...form, chapters: [...form.chapters, { title: '', topics: '' }] });
   const updateChapter = (i, field, val) => {
@@ -44,23 +46,23 @@ export default function CreateCourse() {
       setSubmitting(true);
 
       // Prepare data for API
-      const courseData = {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        category: form.category,
-        difficulty: form.difficulty,
-        price: Number(form.price),
-        discountPrice: form.discountPrice ? Number(form.discountPrice) : undefined,
-        language: form.language,
-        tags: form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
-        chapters: form.chapters
-          .filter((ch) => ch.title.trim())
-          .map((ch, i) => ({
-            title: ch.title.trim(),
-            order: i + 1,
-            topics: ch.topics ? ch.topics.split(',').map((t) => t.trim()).filter(Boolean) : [],
-          })),
-      };
+      const courseData = new FormData();
+      courseData.append('title', form.title.trim());
+      courseData.append('description', form.description.trim());
+      courseData.append('category', form.category);
+      courseData.append('difficulty', form.difficulty);
+      courseData.append('price', Number(form.price));
+      if (form.discountPrice) courseData.append('discountPrice', Number(form.discountPrice));
+      courseData.append('language', form.language);
+      courseData.append('tags', form.tags ? form.tags.split(',').map((t) => t.trim()).filter(Boolean).join(',') : '');
+      form.chapters
+        .filter((ch) => ch.title.trim())
+        .forEach((ch, i) => {
+          courseData.append(`chapters[${i}][title]`, ch.title.trim());
+          courseData.append(`chapters[${i}][order]`, i + 1);
+          courseData.append(`chapters[${i}][topics]`, ch.topics ? ch.topics.split(',').map((t) => t.trim()).filter(Boolean).join(',') : '');
+        });
+      if (thumbnail) courseData.append('thumbnail', thumbnail);
 
       await api.post('/courses', courseData);
       toast.success('Course created successfully! Pending admin approval.');
@@ -136,12 +138,30 @@ export default function CreateCourse() {
                   <input className="input" placeholder="Physics, Mechanics" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
                 </div>
               </div>
-              <div className="p-4 rounded-xl flex items-center gap-3 cursor-pointer" style={{ background: 'var(--bg-tertiary)', border: '2px dashed var(--border-color)' }}>
-                <HiOutlinePhotograph className="w-8 h-8" style={{ color: 'var(--text-tertiary)' }} />
-                <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Upload Thumbnail</p>
-                  <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Recommended: 1280x720px, Max 5MB</p>
-                </div>
+              <div className="p-4 rounded-xl" style={{ background: 'var(--bg-tertiary)', border: '2px dashed var(--border-color)' }}>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <HiOutlinePhotograph className="w-8 h-8" style={{ color: 'var(--text-tertiary)' }} />
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Upload Thumbnail</p>
+                    <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Recommended: 1280x720px, Max 5MB</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setThumbnail(file);
+                        setThumbnailPreview(URL.createObjectURL(file));
+                      }}
+                      className="hidden"
+                    />
+                  </div>
+                </label>
+                {thumbnailPreview && (
+                  <div className="mt-4 rounded-xl overflow-hidden" style={{ maxHeight: 220 }}>
+                    <img src={thumbnailPreview} alt="Thumbnail preview" className="w-full object-cover" />
+                  </div>
+                )}
               </div>
               {/* AI Content Generation */}
               <div className="p-4 rounded-xl" style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.2)' }}>
@@ -213,7 +233,16 @@ export default function CreateCourse() {
 
           {/* Navigation */}
           <div className="flex justify-between mt-6">
-            <button onClick={() => setStep(Math.max(1, step - 1))} className="btn btn-secondary" disabled={step === 1}>
+            <button
+              onClick={() => {
+                if (step === 1) {
+                  navigate('/teacher'); // or navigate(-1) to just go to the previous page in history
+                } else {
+                  setStep(step - 1);
+                }
+              }}
+              className="btn btn-secondary"
+            >
               <HiArrowLeft className="w-4 h-4" /> Back
             </button>
             {step < totalSteps ? (

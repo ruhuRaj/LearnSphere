@@ -77,6 +77,9 @@ export const login = async (req, res) => {
       role: user.role, avatar: user.avatar, status: user.status,
       xp: user.xp, level: user.level, streak: user.streak,
       targetExam: user.targetExam, scholarshipDiscount: user.scholarshipDiscount,
+      bio: user.bio,
+      expertise: user.expertise,
+      language: user.language,
     },
   });
 };
@@ -95,18 +98,49 @@ export const getMe = async (req, res) => {
       enrolledCourses: user.enrolledCourses, badges: user.badges,
       scholarshipDiscount: user.scholarshipDiscount,
       language: user.language,
+      bio: user.bio,
+      expertise: user.expertise,
     },
   });
 };
 
+const normalizeTargetExam = (value) => {
+  if (!value) return '';
+  const mapping = {
+    JEE: 'JEE',
+    NEET: 'NEET',
+    CBSE11: 'CBSE11',
+    CBSE12: 'CBSE12',
+    BIHAR: 'Bihar',
+    JHARKHAND: 'Jharkhand',
+    BENGAL: 'Bengal',
+  };
+  const normalized = String(value).trim().replace(/\s+/g, '').toUpperCase();
+  return mapping[normalized] || '';
+};
+
 // @desc    Update profile
 // @route   PUT /api/auth/profile
+const normalizeLanguage = (value) => {
+  if (!value) return 'en';
+  const normalized = String(value).trim().toLowerCase();
+  const map = {
+    english: 'en',
+    hindi: 'hi',
+    en: 'en',
+    hi: 'hi',
+  };
+  return map[normalized] || 'en';
+};
+
 export const updateProfile = async (req, res) => {
-  const { name, phone, targetExam, language, bio } = req.body;
+  const { name, phone, targetExam, language, bio, expertise } = req.body;
+  const normalizedTargetExam = normalizeTargetExam(targetExam);
+  const normalizedLanguage = normalizeLanguage(language);
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    { name, phone, targetExam, language, bio },
-    { new: true, runValidators: true }
+    { name, phone, targetExam: normalizedTargetExam, language: normalizedLanguage, bio, expertise },
+    { new: true, returnDocument: 'after', runValidators: true }
   );
   res.json({ success: true, user });
 };

@@ -35,7 +35,13 @@ const courseSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-courseSchema.index({ title: 'text', description: 'text', tags: 'text' });
+// Use a different language override field so the `language` property
+// on Course documents (which can be 'English'|'Hindi'|'Both') is
+// not treated by MongoDB as the text index language override.
+courseSchema.index(
+  { title: 'text', description: 'text', tags: 'text' },
+  { default_language: 'english', language_override: 'language_override' }
+);
 courseSchema.index({ category: 1, isPublished: 1, isApproved: 1 });
 
 export default mongoose.model('Course', courseSchema);

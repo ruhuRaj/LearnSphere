@@ -306,25 +306,33 @@ function MyCourses({ courses }) {
   return (
     <div>
       <h2 style={sectionTitle}>My Enrolled Courses</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-        {courses.map(c => (
-          <Card key={c.id} hover style={{ overflow: 'hidden' }}>
-            <div style={{ height: 80, background: c.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>{c.emoji}</div>
-            <div style={{ padding: '16px' }}>
-              <Tag>{c.category}</Tag>
-              <p style={{ margin: '8px 0 2px', fontSize: 15, fontWeight: 700, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}>{c.title}</p>
-              <p style={{ margin: '0 0 12px', fontSize: 12, color: C.textDim }}>{c.teacher}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <div style={{ flex: 1, height: 5, borderRadius: 4, background: 'rgba(255,255,255,0.07)' }}>
-                  <div style={{ height: '100%', borderRadius: 4, width: `${c.progress}%`, background: c.gradient }} />
+      {courses.length === 0 ? (
+        <EmptyState
+          icon="📚"
+          text="Not enrolled in any course yet"
+          sub="Check back after enrolling to courses"
+        />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+          {courses.map(c => (
+            <Card key={c.id} hover style={{ overflow: 'hidden' }}>
+              <div style={{ height: 80, background: c.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>{c.emoji}</div>
+              <div style={{ padding: '16px' }}>
+                <Tag>{c.category}</Tag>
+                <p style={{ margin: '8px 0 2px', fontSize: 15, fontWeight: 700, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}>{c.title}</p>
+                <p style={{ margin: '0 0 12px', fontSize: 12, color: C.textDim }}>{c.teacher}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <div style={{ flex: 1, height: 5, borderRadius: 4, background: 'rgba(255,255,255,0.07)' }}>
+                    <div style={{ height: '100%', borderRadius: 4, width: `${c.progress}%`, background: c.gradient }} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.violet }}>{c.progress}%</span>
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: C.violet }}>{c.progress}%</span>
+                <p style={{ margin: 0, fontSize: 11, color: C.textDim }}>{c.completedLessons}/{c.totalLessons} lessons completed</p>
               </div>
-              <p style={{ margin: 0, fontSize: 11, color: C.textDim }}>{c.completedLessons}/{c.totalLessons} lessons completed</p>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -759,48 +767,102 @@ function AIAssistant({ courses }) {
 
 /* ── BUY COURSES ── */
 function BuyCourses({ user, courses = [], onEnroll, enrollingCourseId }) {
+  const [search, setSearch] = useState('');
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredCourses = courses.filter((c) => {
+    if (!normalizedSearch) return true;
+    const title = String(c.title || '').toLowerCase();
+    const category = String(c.category || '').toLowerCase();
+    const teacher = String(c.teacher?.name || c.teacher || '').toLowerCase();
+    const tags = Array.isArray(c.tags) ? c.tags.join(' ').toLowerCase() : String(c.tags || '').toLowerCase();
+    return title.includes(normalizedSearch)
+      || category.includes(normalizedSearch)
+      || teacher.includes(normalizedSearch)
+      || tags.includes(normalizedSearch);
+  });
+
   return (
     <div>
       <h2 style={{ ...sectionTitle, marginBottom: 8 }}>Explore Courses</h2>
       <p style={{ margin: '0 0 18px', fontSize: 13, color: C.textMid }}>Enroll directly from here — no payment step is required right now.</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
-        {courses.map((c, index) => {
-          const price = Number(c.discountPrice || c.price || 0);
-          const rating = Number(c.rating || 4.7);
-          const teacherName = c.teacher?.name || c.teacher || 'Instructor';
-          return (
-            <Card key={c._id || c.id || `${c.title}-${index}`} hover style={{ padding: '18px 18px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: C.violetSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" size={18} color={C.violet} />
-                </div>
-                <Tag>{c.category || 'Course'}</Tag>
-              </div>
-              <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}>{c.title}</p>
-              <p style={{ margin: '0 0 12px', fontSize: 12, color: C.textDim }}>{teacherName}</p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <span style={{ color: '#FFC107', fontSize: 12 }}>{'★'.repeat(Math.min(5, Math.max(1, Math.round(rating))))}</span>
-                  <span style={{ fontSize: 11, color: C.textDim, marginLeft: 4 }}>{rating.toFixed(1)}</span>
-                </div>
-                <span style={{ fontSize: 16, fontWeight: 800, color: C.violet }}>{price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Free'}</span>
-              </div>
-              <button
-                onClick={() => onEnroll(c)}
-                disabled={enrollingCourseId === (c._id || c.id)}
-                style={{
-                  marginTop: 12, width: '100%', padding: '9px', borderRadius: 10,
-                  background: enrollingCourseId === (c._id || c.id) ? 'rgba(124,58,237,0.55)' : C.violet,
-                  border: 'none', color: '#fff', fontWeight: 700,
-                  fontSize: 13, cursor: 'pointer',
-                }}>
-                {enrollingCourseId === (c._id || c.id) ? 'Enrolling…' : 'Enroll Now'}
-              </button>
-            </Card>
-          );
-        })}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search courses by title, category, teacher or tag..."
+          style={{
+            flex: 1,
+            minWidth: 220,
+            padding: '12px 14px',
+            borderRadius: 14,
+            border: `1px solid ${C.border}`,
+            background: C.surfaceHover,
+            color: C.text,
+            outline: 'none',
+            fontSize: 13,
+          }}
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            style={{
+              padding: '12px 16px',
+              borderRadius: 14,
+              border: 'none',
+              background: C.violet,
+              color: '#fff',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontSize: 13,
+            }}
+          >
+            Clear
+          </button>
+        )}
       </div>
-      {courses.length === 0 && <EmptyState icon="📚" text="No courses available to enroll right now" sub="New courses will appear here once your teacher publishes them." />}
+      {filteredCourses.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+          {filteredCourses.map((c, index) => {
+            const price = Number(c.discountPrice || c.price || 0);
+            const rating = Number(c.rating || 4.7);
+            const teacherName = c.teacher?.name || c.teacher || 'Instructor';
+            return (
+              <Card key={c._id || c.id || `${c.title}-${index}`} hover style={{ padding: '18px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: C.violetSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" size={18} color={C.violet} />
+                  </div>
+                  <Tag>{c.category || 'Course'}</Tag>
+                </div>
+                <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}>{c.title}</p>
+                <p style={{ margin: '0 0 12px', fontSize: 12, color: C.textDim }}>{teacherName}</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <span style={{ color: '#FFC107', fontSize: 12 }}>{'★'.repeat(Math.min(5, Math.max(1, Math.round(rating))))}</span>
+                    <span style={{ fontSize: 11, color: C.textDim, marginLeft: 4 }}>{rating.toFixed(1)}</span>
+                  </div>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: C.violet }}>{price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Free'}</span>
+                </div>
+                <button
+                  onClick={() => onEnroll(c)}
+                  disabled={enrollingCourseId === (c._id || c.id)}
+                  style={{
+                    marginTop: 12, width: '100%', padding: '9px', borderRadius: 10,
+                    background: enrollingCourseId === (c._id || c.id) ? 'rgba(124,58,237,0.55)' : C.violet,
+                    border: 'none', color: '#fff', fontWeight: 700,
+                    fontSize: 13, cursor: 'pointer',
+                  }}>
+                  {enrollingCourseId === (c._id || c.id) ? 'Enrolling…' : 'Enroll Now'}
+                </button>
+              </Card>
+            );
+          })}
+        </div>
+      ) : courses.length > 0 ? (
+        <EmptyState icon="🔎" text="No courses match your search" sub="Try another keyword or clear the search." />
+      ) : (
+        <EmptyState icon="📚" text="No courses available to enroll right now" sub="New courses will appear here once your teacher publishes them." />
+      )}
     </div>
   );
 }

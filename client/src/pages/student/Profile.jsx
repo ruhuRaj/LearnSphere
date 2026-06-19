@@ -1,24 +1,81 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { HiOutlineUser, HiOutlineMail, HiOutlinePhone, HiOutlineAcademicCap, HiOutlinePencil, HiOutlineCamera, HiOutlineShieldCheck, HiOutlineLightningBolt } from 'react-icons/hi';
 import toast from 'react-hot-toast';
+import { loadUser, updateProfile } from '../../features/authSlice';
+
+const TARGET_EXAMS = [
+  { value: 'JEE', label: 'JEE' },
+  { value: 'NEET', label: 'NEET' },
+  { value: 'CBSE11', label: 'CBSE 11' },
+  { value: 'CBSE12', label: 'CBSE 12' },
+  { value: 'Bihar', label: 'Bihar Board' },
+  { value: 'Jharkhand', label: 'Jharkhand Board' },
+  { value: 'Bengal', label: 'Bengal Board' },
+];
+
+const normalizeTargetExam = (value) => {
+  if (!value) return '';
+  const normalized = String(value).trim().replace(/\s+/g, '').toUpperCase();
+  const mapping = {
+    JEE: 'JEE',
+    NEET: 'NEET',
+    CBSE11: 'CBSE11',
+    CBSE12: 'CBSE12',
+    BIHAR: 'Bihar',
+    JHARKHAND: 'Jharkhand',
+    BENGAL: 'Bengal',
+  };
+  return mapping[normalized] || '';
+};
 
 export default function Profile() {
-  const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const { user, isLoading } = useSelector((state) => state.auth);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
-    name: user?.name || 'Student User',
-    email: user?.email || 'student@demo.com',
-    phone: user?.phone || '+91 98765 43210',
-    bio: 'JEE 2026 aspirant | Physics lover | Coding enthusiast',
-    target: 'JEE Advanced',
+    name: '',
+    email: '',
+    phone: '',
+    bio: '',
+    target: '',
     language: 'English',
   });
 
-  const handleSave = () => {
-    setEditing(false);
-    toast.success('Profile updated successfully!');
+  useEffect(() => {
+    if (!user) {
+      dispatch(loadUser());
+    }
+  }, [dispatch, user]);
+
+  useEffect(() => {
+    if (user) {
+      setForm({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        bio: user.bio || '',
+        target: normalizeTargetExam(user.targetExam || user.target || ''),
+        language: user.language || 'en',
+      });
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    try {
+      await dispatch(updateProfile({
+        name: form.name,
+        phone: form.phone,
+        targetExam: form.target,
+        language: form.language,
+        bio: form.bio,
+      })).unwrap();
+      setEditing(false);
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      toast.error(error || 'Could not update profile');
+    }
   };
 
   return (
@@ -44,7 +101,7 @@ export default function Profile() {
                   <span className="badge badge-primary">{user?.role || 'Student'}</span>
                   <span className="badge badge-success"><HiOutlineShieldCheck className="w-3 h-3" /> Verified</span>
                   <span className="badge" style={{ background: 'rgba(245,158,11,0.1)', color: 'var(--accent)' }}>
-                    <HiOutlineLightningBolt className="w-3 h-3" /> 2,450 XP
+                    <HiOutlineLightningBolt className="w-3 h-3" /> {user?.xp || 0} XP
                   </span>
                 </div>
               </div>
@@ -63,7 +120,12 @@ export default function Profile() {
                   <label className="label">Full Name</label>
                   <div className="relative">
                     <HiOutlineUser className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
-                    <input className="input pl-10" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} disabled={!editing} />
+                    <input
+                      className="input pl-10"
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      disabled={!editing}
+                    />
                   </div>
                 </div>
                 <div>
@@ -77,10 +139,19 @@ export default function Profile() {
                   <label className="label">Phone</label>
                   <div className="relative">
                     <HiOutlinePhone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
-                    <input className="input pl-10" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={!editing} />
+                    <input
+                      className="input pl-10"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      disabled={!editing}
+                    />
                   </div>
                 </div>
-                {editing && <button onClick={handleSave} className="btn btn-primary w-full">Save Changes</button>}
+                {editing && (
+                  <button onClick={handleSave} className="btn btn-primary w-full" disabled={isLoading}>
+                    {isLoading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -94,34 +165,17 @@ export default function Profile() {
                     <div className="relative">
                       <HiOutlineAcademicCap className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
                       <select className="input pl-10" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} disabled={!editing} style={{ appearance: 'auto' }}>
-                        {['JEE Mains', 'JEE Advanced', 'NEET', 'CBSE 11', 'CBSE 12', 'Bihar Board', 'Jharkhand Board', 'Bengal Board'].map((t) => <option key={t}>{t}</option>)}
+                        {TARGET_EXAMS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                       </select>
                     </div>
                   </div>
                   <div>
                     <label className="label">Preferred Language</label>
                     <select className="input" value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })} disabled={!editing} style={{ appearance: 'auto' }}>
-                      <option>English</option><option>Hindi</option>
+                      <option value="en">English</option>
+                      <option value="hi">Hindi</option>
                     </select>
                   </div>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="glass-card p-6">
-                <h3 className="font-semibold font-[Outfit] mb-4" style={{ color: 'var(--text-primary)' }}>Learning Stats</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: 'Courses', value: '3' },
-                    { label: 'Tests Taken', value: '24' },
-                    { label: 'Study Hours', value: '156h' },
-                    { label: 'Streak', value: '7 days' },
-                  ].map((s) => (
-                    <div key={s.label} className="p-3 rounded-xl text-center" style={{ background: 'var(--bg-tertiary)' }}>
-                      <div className="text-lg font-bold font-[Outfit]" style={{ color: 'var(--primary)' }}>{s.value}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{s.label}</div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>

@@ -4,6 +4,7 @@ import app from './app.js';
 import connectDB from './config/db.js';
 import dotenv from 'dotenv';
 import User from './models/User.js';
+import Course from './models/Course.js';
 import setupSockets from './sockets/socketHandler.js';
 
 dotenv.config();
@@ -62,6 +63,25 @@ const seedDemoUsers = async () => {
 const startServer = async () => {
   try {
     await connectDB();
+    // Ensure text index on courses doesn't treat `language` field as language override.
+    try {
+      const indexes = await Course.collection.indexes();
+      // Find any text index
+      const textIndexes = indexes.filter((idx) => Object.values(idx.key || {}).includes('text'));
+      for (const idx of textIndexes) {
+        // Drop existing text index
+        console.log('Dropping existing text index:', idx.name);
+        try { await Course.collection.dropIndex(idx.name); } catch (e) { console.warn('Failed to drop index', idx.name, e.message); }
+      }
+      // Recreate text index with safe language_override field
+      await Course.collection.createIndex(
+        { title: 'text', description: 'text', tags: 'text' },
+        { default_language: 'english', language_override: 'language_override' }
+      );
+      console.log('✅ Course text index created with language_override=language_override');
+    } catch (err) {
+      console.warn('Could not ensure course text index:', err.message);
+    }
     await seedDemoUsers();
 
     httpServer.listen(PORT, () => {
