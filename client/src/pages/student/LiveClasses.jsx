@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiCalendar, FiUsers, FiVideo, FiMessageSquare, FiActivity, FiMic, FiMonitor } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import { FiCalendar, FiUsers, FiVideo, FiMessageSquare, FiActivity, FiMic, FiMonitor, FiThumbsUp } from 'react-icons/fi';
 import api from '../../services/api';
 
 export default function LiveClasses() {
@@ -9,30 +10,44 @@ export default function LiveClasses() {
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [tab, setTab] = useState('upcoming');
+  const [reminders, setReminders] = useState({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchClasses();
+    const interval = setInterval(fetchClasses, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchClasses = async () => {
     try {
+      setLoading(true);
       const { data } = await api.get('/live-classes');
       setClasses(data.classes || []);
-    } catch {
-      // Demo data
-      setClasses([
-        { _id: '1', title: 'Electromagnetic Induction — Part 2', course: { title: 'JEE Physics' }, teacher: { name: 'Dr. Sharma', avatar: '' }, scheduledAt: new Date(Date.now() + 3600000).toISOString(), status: 'scheduled', attendeeCount: 0, duration: 60 },
-        { _id: '2', title: 'Organic Chemistry — Reactions', course: { title: 'NEET Chemistry' }, teacher: { name: 'Prof. Gupta', avatar: '' }, scheduledAt: new Date(Date.now() + 86400000).toISOString(), status: 'scheduled', attendeeCount: 0, duration: 90 },
-        { _id: '3', title: 'Calculus — Integration Techniques', course: { title: 'JEE Mathematics' }, teacher: { name: 'Dr. Verma', avatar: '' }, scheduledAt: new Date(Date.now() - 3600000).toISOString(), status: 'ended', attendeeCount: 234, duration: 60, recordingUrl: '#' },
-      ]);
+    } catch (error) {
+      console.error('Failed to load live classes:', error);
+      setClasses([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const joinClass = (cls) => {
+  const joinClass = async (cls) => {
     setActiveClass(cls);
     setMessages([
       { id: 1, user: 'System', text: `Welcome to "${cls.title}"! The class will begin shortly.`, time: new Date().toISOString() },
     ]);
+
+    try {
+      await api.post(`/live-classes/${cls._id}/attendance`, { courseId: cls.course?._id || cls.course, duration: cls.duration });
+    } catch (error) {
+      console.error('Failed to register attendance:', error);
+    }
+  };
+
+  const getJitsiUrl = (cls) => {
+    const room = cls?.roomId || `learn-sphere-live-${cls?._id || Date.now()}`;
+    return `https://meet.jit.si/${encodeURIComponent(room)}`;
   };
 
   const sendChat = () => {
@@ -43,6 +58,31 @@ export default function LiveClasses() {
 
   const filtered = classes.filter(c => tab === 'upcoming' ? c.status !== 'ended' : c.status === 'ended');
 
+  const setReminder = async (cls) => {
+    try {
+      await api.post(`/live-classes/${cls._id}/reminder`);
+      setReminders((prev) => ({ ...prev, [cls._id]: true }));
+      toast.success('Reminder saved. You can view it in Notifications.');
+    } catch (error) {
+      console.error('Failed to set reminder:', error);
+      toast.error(error.response?.data?.message || 'Could not save reminder.');
+    }
+  };
+
+  const handleWatchRecording = (cls) => {
+    if (!cls.recordingUrl) {
+      toast('Video not uploaded yet will be uploaded soon');
+      return;
+    }
+    window.open(cls.recordingUrl, '_blank');
+  };
+
+  const handleJoinClick = (cls) => {
+    if (cls.status === 'live' || cls.status === 'scheduled') {
+      joinClass(cls);
+    }
+  };
+
   if (activeClass) {
     return (
       <div className="page-container" style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -50,22 +90,40 @@ export default function LiveClasses() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '20px', marginTop: '80px' }}>
           {/* Video Area */}
           <div>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card" style={{ aspectRatio: '16/9', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f0f23, #1a1a3e)', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ textAlign: 'center' }}>
-                <FiMonitor size={48} style={{ color: '#6366f1', marginBottom: '16px' }} />
-                <h3 style={{ color: '#fff', fontSize: '18px', fontWeight: 700 }}>{activeClass.title}</h3>
-                <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '8px' }}>by {activeClass.teacher?.name}</p>
-                <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                  <span style={{ padding: '6px 12px', borderRadius: '20px', background: '#ef444420', color: '#ef4444', fontSize: '12px', fontWeight: 600 }}>● LIVE</span>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card" style={{ aspectRatio: '16/9', borderRadius: '16px', position: 'relative', overflow: 'hidden', background: '#000' }}>
+              {activeClass?.roomId ? (
+                <iframe
+                  title={`Jitsi session for ${activeClass.title}`}
+                  src={getJitsiUrl(activeClass)}
+                  allow="camera; microphone; fullscreen; display-capture; autoplay"
+                  style={{ border: 0, width: '100%', height: '100%' }}
+                />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 24, textAlign: 'center' }}>
+                  <div>
+                    <FiMonitor size={48} style={{ color: '#6366f1', marginBottom: '16px' }} />
+                    <h3 style={{ color: '#fff', fontSize: '18px', fontWeight: 700 }}>{activeClass.title}</h3>
+                    <p style={{ color: '#94a3b8', fontSize: '14px', marginTop: '8px' }}>Your instructor will join shortly.</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
+            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ color: 'var(--text-primary)', fontSize: '18px', fontWeight: 700, margin: 0 }}>{activeClass.title}</h3>
+                <p style={{ color: 'var(--text-secondary)', margin: '6px 0 0', fontSize: '13px' }}>Room ID: <strong>{activeClass.roomId || 'Pending...'}</strong></p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <a href={getJitsiUrl(activeClass)} target="_blank" rel="noreferrer" style={{ padding: '12px 18px', borderRadius: '12px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>Open in new tab</a>
+                <button onClick={() => setActiveClass(null)} style={{ padding: '12px 18px', borderRadius: '12px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>Leave Class</button>
+              </div>
+            </div>
             {/* Controls */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '16px' }}>
               {[
                 { icon: <FiMic size={18} />, label: 'Mute' },
                 { icon: <FiVideo size={18} />, label: 'Video' },
-                { icon: <FiHand size={18} />, label: 'Raise Hand', color: '#f59e0b' },
+                { icon: <FiThumbsUp size={18} />, label: 'Raise Hand', color: '#f59e0b' },
               ].map(btn => (
                 <button key={btn.label} style={{ padding: '12px 20px', borderRadius: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: btn.color || 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}>
                   {btn.icon} {btn.label}
@@ -118,8 +176,8 @@ export default function LiveClasses() {
           {filtered.map((cls, i) => (
             <motion.div key={cls._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="glass-card" style={{ padding: '20px', borderRadius: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, background: cls.status === 'live' ? '#ef444420' : cls.status === 'scheduled' ? '#6366f120' : '#10b98120', color: cls.status === 'live' ? '#ef4444' : cls.status === 'scheduled' ? '#6366f1' : '#10b981' }}>
-                  {cls.status === 'live' ? '● LIVE' : cls.status === 'scheduled' ? '📅 Upcoming' : '✅ Ended'}
+                <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, background: cls.status === 'live' ? '#ef444420' : cls.status === 'scheduled' ? '#6366f120' : '#10b98120', color: cls.status === 'live' ? '#ef4444' : cls.status === 'scheduled' ? '#6366f1' : '#3B82F6' }}>
+                  {cls.status === 'live' ? '● LIVE' : cls.status === 'scheduled' ? '📅 Upcoming' : 'Ended'}
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{cls.duration}min</span>
               </div>
@@ -129,13 +187,19 @@ export default function LiveClasses() {
                 <FiCalendar size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                 {new Date(cls.scheduledAt).toLocaleString()}
               </p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-tertiary)' }}>
                   <FiUsers size={14} /> {cls.attendeeCount} attendees
                 </div>
-                <button onClick={() => cls.status !== 'ended' ? joinClass(cls) : null} style={{ padding: '8px 16px', borderRadius: '8px', background: cls.status === 'ended' ? 'var(--bg-tertiary)' : 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
-                  {cls.status === 'ended' ? '▶ Watch Recording' : cls.status === 'live' ? 'Join Now' : 'Set Reminder'}
-                </button>
+                {cls.status === 'ended' ? (
+                  <button onClick={() => handleWatchRecording(cls)} className="btn btn-primary btn-sm" style={{ padding: '8px 16px', borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                    ▶ Watch Recording
+                  </button>
+                ) : (
+                  <button onClick={() => cls.status === 'live' ? handleJoinClick(cls) : setReminder(cls)} style={{ padding: '8px 16px', borderRadius: '8px', background: cls.status === 'live' ? 'linear-gradient(135deg, #6366f1, #a855f7)' : 'linear-gradient(135deg, #f59e0b, #fbbf24)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                    {cls.status === 'live' ? 'Join Now' : reminders[cls._id] ? 'Reminder Set' : 'Set Reminder'}
+                  </button>
+                )}
               </div>
             </motion.div>
           ))}

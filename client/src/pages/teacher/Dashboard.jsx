@@ -69,14 +69,24 @@ export default function TeacherDashboard() {
   const [teacherVideos, setTeacherVideos] = useState([]);
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [deletingVideoId, setDeletingVideoId] = useState(null);
+  const [teacherLiveClasses, setTeacherLiveClasses] = useState([]);
+  const [loadingLiveClasses, setLoadingLiveClasses] = useState(false);
+  const [activeLiveClass, setActiveLiveClass] = useState(null);
   const [videoHistoryCourse, setVideoHistoryCourse] = useState('');
   const [videoHistoryChapter, setVideoHistoryChapter] = useState('');
+  const [noteHistoryCourse, setNoteHistoryCourse] = useState('');
+  const [noteHistoryChapter, setNoteHistoryChapter] = useState('');
   const [testForm, setTestForm] = useState({ title: '', course: '', duration: 30, totalMarks: 40, type: 'topic' });
   const [liveForm, setLiveForm] = useState({ title: '', course: '', scheduledAt: new Date(Date.now() + 3600000).toISOString().slice(0, 16), duration: 60 });
   const [allDoubts, setAllDoubts] = useState([]);
   const [doubtReplyDrafts, setDoubtReplyDrafts] = useState({});
   const [replyingId, setReplyingId] = useState(null);
   const [busyReplyId, setBusyReplyId] = useState(null);
+
+  const getJitsiUrl = (liveClass) => {
+    const room = liveClass?.roomId || `learn-sphere-live-${liveClass?._id || Date.now()}`;
+    return `https://meet.jit.si/${encodeURIComponent(room)}`;
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -130,6 +140,21 @@ export default function TeacherDashboard() {
     }
   };
 
+  const loadTeacherLiveClasses = async () => {
+    try {
+      setLoadingLiveClasses(true);
+      const { data } = await api.get('/live-classes');
+      const classes = data.classes || [];
+      setTeacherLiveClasses(classes);
+      const active = classes.find((cls) => cls.status === 'live');
+      setActiveLiveClass(active || null);
+    } catch (error) {
+      console.error('Failed to load teacher live classes:', error);
+    } finally {
+      setLoadingLiveClasses(false);
+    }
+  };
+
   const handleDeleteNote = async (noteId) => {
     const didConfirm = window.confirm('Delete this note from your uploads?');
     if (!didConfirm) return;
@@ -164,6 +189,36 @@ export default function TeacherDashboard() {
     }
   };
 
+  const startLiveClass = async (classId) => {
+    try {
+      setActionBusy(true);
+      const { data } = await api.put(`/live-classes/${classId}/start`);
+      toast.success('Live class started successfully');
+      setActiveLiveClass(data.liveClass || null);
+      await loadTeacherLiveClasses();
+    } catch (error) {
+      console.error('Failed to start live class:', error);
+      toast.error(error.response?.data?.message || 'Could not start class');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const endLiveClass = async (classId) => {
+    try {
+      setActionBusy(true);
+      await api.put(`/live-classes/${classId}/end`);
+      toast.success('Live class ended successfully');
+      setActiveLiveClass(null);
+      await loadTeacherLiveClasses();
+    } catch (error) {
+      console.error('Failed to end live class:', error);
+      toast.error(error.response?.data?.message || 'Could not end class');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   useEffect(() => {
     if (teacherCourses.length) {
       loadTeacherVideos(teacherCourses);
@@ -176,6 +231,7 @@ export default function TeacherDashboard() {
     if (user?.role === 'teacher') {
       loadDashboardData();
       loadTeacherNotes();
+      loadTeacherLiveClasses();
     } else {
       setIsLoading(false);
     }
@@ -301,6 +357,7 @@ export default function TeacherDashboard() {
           attendeeCount: 0,
         });
         toast.success('Live class scheduled successfully');
+        await loadTeacherLiveClasses();
       }
 
       setActiveAction(null);
@@ -326,6 +383,23 @@ export default function TeacherDashboard() {
       .map((video) => video.chapter || 'General');
     return [...new Set(chapters)];
   }, [teacherVideos, videoHistoryCourse]);
+
+  const filteredTeacherNotes = useMemo(() => {
+    return teacherNotes.filter((note) => {
+      const courseId = note.course?._id || note.course;
+      const chapterLabel = note.chapter || note.subject || 'General';
+      const matchesCourse = !noteHistoryCourse || courseId === noteHistoryCourse;
+      const matchesChapter = !noteHistoryChapter || chapterLabel === noteHistoryChapter;
+      return matchesCourse && matchesChapter;
+    });
+  }, [teacherNotes, noteHistoryCourse, noteHistoryChapter]);
+
+  const availableNoteChapters = useMemo(() => {
+    const chapters = teacherNotes
+      .filter((note) => !noteHistoryCourse || (note.course?._id || note.course) === noteHistoryCourse)
+      .map((note) => note.chapter || note.subject || 'General');
+    return [...new Set(chapters)];
+  }, [teacherNotes, noteHistoryCourse]);
 
   const actionButtons = [
     { icon: HiOutlinePlay, label: 'Upload Video', color: '#6366f1', action: () => setActiveAction('video') },
@@ -414,11 +488,32 @@ export default function TeacherDashboard() {
               <h3 className="font-semibold font-[Outfit]" style={{ color: 'var(--text-primary)' }}>Uploaded Notes</h3>
               <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{loadingNotes ? 'Refreshing…' : `${teacherNotes.length} items`}</span>
             </div>
+            <select className="input" value={noteHistoryCourse} onChange={(e) => { setNoteHistoryCourse(e.target.value); setNoteHistoryChapter(''); }}>
+              <option value="">All courses</option>
+              {teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}
+            </select>
+            {availableNoteChapters.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {availableNoteChapters.map((chapter) => (
+                  <button
+                    key={chapter}
+                    onClick={() => setNoteHistoryChapter(chapter === 'General' ? '' : chapter)}
+                    className="btn btn-ghost btn-sm"
+                    style={{
+                      borderColor: (noteHistoryChapter || 'General') === chapter ? 'var(--primary)' : 'var(--border-color)',
+                      color: (noteHistoryChapter || 'General') === chapter ? 'var(--primary)' : 'var(--text-secondary)',
+                    }}
+                  >
+                    {chapter}
+                  </button>
+                ))}
+              </div>
+            )}
             {loadingNotes ? (
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading your notes...</p>
-            ) : teacherNotes.length ? (
+            ) : filteredTeacherNotes.length ? (
               <div className="space-y-3">
-                {teacherNotes.map((note) => (
+                {filteredTeacherNotes.map((note) => (
                   <div key={note.id} className="rounded-2xl p-4" style={{ background: 'var(--bg-tertiary)' }}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -525,7 +620,117 @@ export default function TeacherDashboard() {
         </div>
       );
     }) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No teacher courses found yet.</p>}</div></div>,
-    live: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Go Online</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Schedule a live class and start teaching in real time.</p><div className="space-y-3"><input className="input" placeholder="Live class title" value={liveForm.title} onChange={(e) => setLiveForm({ ...liveForm, title: e.target.value })} /><select className="input" value={liveForm.course} onChange={(e) => setLiveForm({ ...liveForm, course: e.target.value })}><option value="">Select a course</option>{teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}</select><input className="input" type="datetime-local" value={liveForm.scheduledAt} onChange={(e) => setLiveForm({ ...liveForm, scheduledAt: e.target.value })} /><input className="input" type="number" value={liveForm.duration} onChange={(e) => setLiveForm({ ...liveForm, duration: Number(e.target.value) })} placeholder="Duration (minutes)" /></div><button onClick={() => submitAction('live')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Scheduling...' : 'Start Live Class'}</button></div>,
+    live: <div className="space-y-6">
+      <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
+        <h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Go Online</h2>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Schedule a live class and start teaching in real time.</p>
+        <div className="space-y-3">
+          <input className="input" placeholder="Live class title" value={liveForm.title} onChange={(e) => setLiveForm({ ...liveForm, title: e.target.value })} />
+          <select className="input" value={liveForm.course} onChange={(e) => setLiveForm({ ...liveForm, course: e.target.value })}>
+            <option value="">Select a course</option>
+            {teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}
+          </select>
+          <input className="input" type="datetime-local" value={liveForm.scheduledAt} onChange={(e) => setLiveForm({ ...liveForm, scheduledAt: e.target.value })} />
+          <input className="input" type="number" value={liveForm.duration} onChange={(e) => setLiveForm({ ...liveForm, duration: Number(e.target.value) })} placeholder="Duration (minutes)" />
+        </div>
+        <button onClick={() => submitAction('live')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Scheduling...' : 'Schedule Live Class'}</button>
+      </div>
+
+      <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Scheduled classes</h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Manage upcoming and live sessions for your courses.</p>
+          </div>
+          {loadingLiveClasses && <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Loading…</span>}
+        </div>
+        {activeLiveClass && (
+          <>
+            <div className="glass-card p-4 rounded-3xl border border-red-300 mb-4" style={{ background: 'rgba(239,68,68,0.08)', borderColor: '#fca5a5' }}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{activeLiveClass.title}</h4>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Live now • {activeLiveClass.duration || 60} mins</p>
+                </div>
+                <button onClick={() => endLiveClass(activeLiveClass._id)} disabled={actionBusy} className="btn btn-error btn-sm">{actionBusy ? 'Ending...' : 'End Class'}</button>
+              </div>
+            </div>
+
+            <div className="glass-card p-4 rounded-3xl border border-red-300 mb-4" style={{ background: 'rgba(15,23,42,0.95)', borderColor: '#fca5a5' }}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <div>
+                  <h4 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Teacher live room</h4>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Use the embedded Jitsi session to teach live and support student join requests.</p>
+                  <p className="text-[11px] mt-2" style={{ color: 'var(--text-tertiary)' }}>Room ID: <strong>{activeLiveClass.roomId}</strong></p>
+                </div>
+                <a href={getJitsiUrl(activeLiveClass)} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">Open in new tab</a>
+              </div>
+              <div style={{ aspectRatio: '16/9', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
+                <iframe
+                  title={`Teacher session ${activeLiveClass.title}`}
+                  src={getJitsiUrl(activeLiveClass)}
+                  allow="camera; microphone; fullscreen; display-capture; autoplay"
+                  style={{ width: '100%', height: '100%', border: 0 }}
+                />
+              </div>
+            </div>
+          </>
+        )}
+        <div className="space-y-3">
+          {teacherLiveClasses.filter((cls) => cls.status !== 'ended').length ? teacherLiveClasses.filter((cls) => cls.status !== 'ended').map((cls) => (
+            <div key={cls._id} className="rounded-3xl p-4 border border-transparent hover:border-violet-300 transition duration-200" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))' }}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{cls.title}</h4>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{cls.course?.title || 'No course selected'}</p>
+                  <p className="text-[11px] mt-2" style={{ color: 'var(--text-tertiary)' }}>{new Date(cls.scheduledAt).toLocaleString()}</p>
+                </div>
+                <span className="badge badge-outline text-[11px]" style={{ color: cls.status === 'live' ? '#ef4444' : '#6366f1', borderColor: cls.status === 'live' ? '#ef4444' : '#6366f1' }}>{cls.status === 'live' ? 'LIVE' : 'Scheduled'}</span>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Duration: {cls.duration || 60} mins</p>
+                {cls.status === 'scheduled' && (
+                  <button onClick={() => startLiveClass(cls._id)} disabled={actionBusy} className="btn btn-primary btn-sm">{actionBusy ? 'Starting...' : 'Start Now'}</button>
+                )}
+                {cls.status === 'live' && (
+                  <div className="flex items-center gap-2">
+                    <span className="badge badge-outline text-[11px]" style={{ color: '#10b981', borderColor: '#10b981' }}>Students can join now</span>
+                    <button onClick={() => endLiveClass(cls._id)} disabled={actionBusy} className="btn btn-error btn-sm">{actionBusy ? 'Ending...' : 'End Class'}</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No live or upcoming classes found yet.</p>}
+        </div>
+      </div>
+
+      <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Live class history</h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Review completed sessions for each course.</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {teacherLiveClasses.filter((cls) => cls.status === 'ended').length ? teacherLiveClasses.filter((cls) => cls.status === 'ended').map((cls) => (
+            <div key={cls._id} className="rounded-3xl p-4 border border-transparent hover:border-violet-300 transition duration-200" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))' }}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{cls.title}</h4>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{cls.course?.title || 'No course selected'}</p>
+                  <p className="text-[11px] mt-2" style={{ color: 'var(--text-tertiary)' }}>{new Date(cls.scheduledAt).toLocaleString()}</p>
+                </div>
+                <span className="badge badge-outline text-[11px]" style={{ color: '#10b981', borderColor: '#10b981' }}>Ended</span>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Attendees: {cls.attendeeCount || 0}</p>
+                {cls.recordingUrl && <a href={cls.recordingUrl} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">View Recording</a>}
+              </div>
+            </div>
+          )) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No completed live classes yet.</p>}
+        </div>
+      </div>
+    </div>,
   };
 
   return (

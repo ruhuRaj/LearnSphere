@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HiOutlineUser, HiOutlineMail, HiOutlinePhone, HiOutlineAcademicCap, HiOutlinePencil, HiOutlineCamera, HiOutlineShieldCheck, HiOutlineLightningBolt } from 'react-icons/hi';
+import { HiOutlineArrowLeft, HiOutlineUser, HiOutlineMail, HiOutlinePhone, HiOutlineAcademicCap, HiOutlinePencil, HiOutlineCamera, HiOutlineShieldCheck, HiOutlineLightningBolt } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { loadUser, updateProfile } from '../../features/authSlice';
 
@@ -32,6 +33,7 @@ const normalizeTargetExam = (value) => {
 
 export default function Profile() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user, isLoading } = useSelector((state) => state.auth);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -83,6 +85,11 @@ export default function Profile() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {/* Profile Header */}
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => navigate('/student')} className="btn btn-ghost btn-sm flex items-center gap-2">
+              <HiOutlineArrowLeft className="w-4 h-4" /> Back to dashboard
+            </button>
+          </div>
           <div className="glass-card p-8 mb-6 relative overflow-hidden">
             <div className="absolute inset-0 gradient-primary opacity-10" />
             <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">

@@ -1,6 +1,7 @@
 import LiveClass from '../models/LiveClass.js';
 import { Attendance } from '../models/Other.js';
 import User from '../models/User.js';
+import { createNotification, NotificationTemplates } from '../services/notificationService.js';
 
 // @desc    Get live classes (with filters)
 // @route   GET /api/live-classes
@@ -83,7 +84,7 @@ export const endLiveClass = async (req, res, next) => {
     const liveClass = await LiveClass.findById(req.params.id);
     if (!liveClass) return res.status(404).json({ success: false, message: 'Live class not found' });
     liveClass.status = 'ended';
-    if (req.body.recordingUrl) liveClass.recordingUrl = req.body.recordingUrl;
+    if (req.body?.recordingUrl) liveClass.recordingUrl = req.body.recordingUrl;
     await liveClass.save();
     res.json({ success: true, liveClass });
   } catch (error) {
@@ -124,6 +125,28 @@ export const markAttendance = async (req, res, next) => {
     }
 
     res.json({ success: true, message: 'Attendance marked' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Create a persistent reminder notification for a live class
+// @route   POST /api/live-classes/:id/reminder
+export const createLiveClassReminder = async (req, res, next) => {
+  try {
+    const liveClass = await LiveClass.findById(req.params.id);
+    if (!liveClass) return res.status(404).json({ success: false, message: 'Live class not found' });
+
+    const timeLabel = new Date(liveClass.scheduledAt).toLocaleString();
+    const notificationData = NotificationTemplates.liveClassReminder(liveClass.title, timeLabel);
+
+    await createNotification({
+      userId: req.user._id,
+      ...notificationData,
+      link: `/student/live-classes`,
+    });
+
+    res.json({ success: true, message: 'Reminder saved', reminder: { classId: liveClass._id } });
   } catch (error) {
     next(error);
   }
