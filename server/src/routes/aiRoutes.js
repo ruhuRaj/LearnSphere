@@ -4,12 +4,23 @@ import axios from 'axios';
 
 const router = express.Router();
 const AI_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const AI_PUBLIC_KEY = process.env.AI_PUBLIC_KEY || null;
+
+// Allow requests with a special public key header to bypass auth for public AI usage
+const aiAccess = (req, res, next) => {
+  const key = req.headers['x-ai-key'] || req.headers['x-ai-key'.toLowerCase()];
+  if (AI_PUBLIC_KEY && key === AI_PUBLIC_KEY) return next();
+  return protect(req, res, next);
+};
 
 // Proxy helper — forwards requests to FastAPI AI service
 const proxyToAI = (endpoint) => async (req, res, next) => {
   try {
+    const forwardHeaders = { 'Content-Type': 'application/json' };
+    if (req.headers['x-ai-key']) forwardHeaders['x-ai-key'] = req.headers['x-ai-key'];
+
     const { data } = await axios.post(`${AI_URL}/ai/${endpoint}`, req.body, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: forwardHeaders,
       timeout: 30000,
     });
     res.json(data);
@@ -25,11 +36,12 @@ const proxyToAI = (endpoint) => async (req, res, next) => {
   }
 };
 
-router.post('/generate-test', protect, proxyToAI('generate-test'));
-router.post('/solve-doubt', protect, proxyToAI('solve-doubt'));
-router.post('/generate-content', protect, proxyToAI('generate-content'));
-router.post('/moderate-comment', protect, proxyToAI('moderate-comment'));
-router.post('/study-plan', protect, proxyToAI('study-plan'));
+router.post('/generate-test', aiAccess, proxyToAI('generate-test'));
+router.post('/evaluate-mock-test', aiAccess, proxyToAI('evaluate-mock-test'));
+router.post('/solve-doubt', aiAccess, proxyToAI('solve-doubt'));
+router.post('/generate-content', aiAccess, proxyToAI('generate-content'));
+router.post('/moderate-comment', aiAccess, proxyToAI('moderate-comment'));
+router.post('/study-plan', aiAccess, proxyToAI('study-plan'));
 
 // Recommendations (GET with user ID)
 router.get('/recommend', protect, async (req, res, next) => {

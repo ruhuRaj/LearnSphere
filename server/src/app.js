@@ -16,11 +16,13 @@ import testRoutes from './routes/testRoutes.js';
 import doubtRoutes from './routes/doubtRoutes.js';
 import assignmentRoutes from './routes/assignmentRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import scholarshipRoutes from './routes/scholarshipRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import liveClassRoutes from './routes/liveClassRoutes.js';
 import notesRoutes from './routes/notesRoutes.js';
 import forumRoutes from './routes/forumRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import mockTestRoutes from './routes/mockTestRoutes.js';
 import { errorHandler } from './middleware/auth.js';
 
 const app = express();
@@ -62,11 +64,13 @@ app.use('/api/tests', testRoutes);
 app.use('/api/doubts', doubtRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/scholarship', scholarshipRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/live-classes', liveClassRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/forum', forumRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/mock-tests', mockTestRoutes);
 
 // ── Root API & Health Check ─────────────────
 app.get('/api', (req, res) => {

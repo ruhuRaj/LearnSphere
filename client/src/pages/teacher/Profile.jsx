@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiOutlineArrowLeft, HiOutlineUser, HiOutlineMail, HiOutlinePhone, HiOutlineAcademicCap, HiOutlinePencil, HiOutlineCamera, HiOutlineShieldCheck, HiOutlineLightningBolt } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { loadUser, updateProfile } from '../../features/authSlice';
+import api from '../../services/api';
 
 export default function TeacherProfile() {
   const dispatch = useDispatch();
@@ -19,6 +20,7 @@ export default function TeacherProfile() {
     expertise: '',
     language: 'en',
   });
+  const fileRef = useRef(null);
 
   useEffect(() => {
     if (!user) {
@@ -55,6 +57,27 @@ export default function TeacherProfile() {
     }
   };
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const t = toast.loading('Uploading avatar...');
+    try {
+      const fd = new FormData();
+      fd.append('avatar', file);
+      const { data } = await api.post('/auth/avatar', fd);
+      if (data?.success) {
+        await dispatch(loadUser());
+        toast.success('Avatar uploaded', { id: t });
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Upload failed', { id: t });
+    } finally {
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   return (
     <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
@@ -68,10 +91,15 @@ export default function TeacherProfile() {
             <div className="absolute inset-0 gradient-primary opacity-10" />
             <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6">
               <div className="relative group">
-                <div className="w-24 h-24 rounded-2xl flex items-center justify-center text-4xl font-bold text-white" style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))' }}>
-                  {form.name.charAt(0).toUpperCase()}
-                </div>
-                <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'var(--primary)', color: 'white' }}>
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="avatar" className="w-24 h-24 rounded-2xl object-cover" />
+                ) : (
+                  <div className="w-24 h-24 rounded-2xl flex items-center justify-center text-4xl font-bold text-white" style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))' }}>
+                    {form.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+                <button onClick={() => fileRef.current?.click()} className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'var(--primary)', color: 'white' }}>
                   <HiOutlineCamera className="w-4 h-4" />
                 </button>
               </div>

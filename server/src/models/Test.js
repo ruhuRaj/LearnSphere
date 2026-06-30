@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const questionSchema = new mongoose.Schema({
   text: { type: String, required: true },
-  type: { type: String, enum: ['mcq', 'subjective', 'numerical'], default: 'mcq' },
+  type: { type: String, enum: ['mcq', 'subjective', 'numerical', 'true-false', 'fill-in-the-blank'], default: 'mcq' },
   options: [{ text: String, isCorrect: Boolean }],
   correctAnswer: { type: String },
   explanation: { type: String },

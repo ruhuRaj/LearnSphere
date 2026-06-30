@@ -6,6 +6,11 @@ FastAPI-powered AI service for test generation, doubt solving, content generatio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import ai_router
+from dotenv import load_dotenv
+import os
+
+# load environment variables from .env
+load_dotenv()
 
 app = FastAPI(
     title="LearnSphere AI Service",

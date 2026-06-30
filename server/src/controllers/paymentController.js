@@ -1,7 +1,10 @@
 import { Payment } from '../models/Other.js';
+import { Scholarship } from '../models/Extra.js';
 import Course from '../models/Course.js';
 import User from '../models/User.js';
 import crypto from 'crypto';
+
+const normalizeCoupon = (code) => String(code || '').trim().toUpperCase();
 
 // @desc    Create payment order
 // @route   POST /api/payments/create-order
@@ -13,23 +16,25 @@ export const createOrder = async (req, res, next) => {
 
     let amount = course.discountPrice || course.price;
     let discount = 0;
+    let couponCodeApplied = '';
 
-    // Apply coupon discount
+    // Apply scholarship coupon if present
     if (couponCode) {
-      const couponDiscounts = { 'LEARN10': 10, 'WELCOME20': 20, 'SCHOLAR50': 50 };
-      const couponDiscount = couponDiscounts[couponCode.toUpperCase()];
-      if (couponDiscount) {
+      const normalized = normalizeCoupon(couponCode);
+      const scholarship = await Scholarship.findOne({
+        couponCode: normalized,
+        status: 'active',
+        validUntil: { $gt: new Date() },
+      });
+      if (!scholarship) {
+        return res.status(400).json({ success: false, message: 'Invalid or expired coupon code' });
+      }
+      const couponDiscount = scholarship.discountPercent || 0;
+      if (couponDiscount > 0) {
         discount = Math.round(amount * couponDiscount / 100);
         amount -= discount;
+        couponCodeApplied = normalized;
       }
-    }
-
-    // Apply scholarship discount
-    const user = await User.findById(req.user._id);
-    if (user.scholarshipDiscount > 0) {
-      const scholDiscount = Math.round(amount * user.scholarshipDiscount / 100);
-      discount += scholDiscount;
-      amount -= scholDiscount;
     }
 
     amount = Math.max(0, amount);
@@ -43,7 +48,7 @@ export const createOrder = async (req, res, next) => {
       discount,
       gateway,
       orderId,
-      couponCode: couponCode || '',
+      couponCode: couponCodeApplied,
       status: 'pending',
     });
 
@@ -85,6 +90,17 @@ export const verifyPayment = async (req, res, next) => {
       await user.save();
     }
 
+    // Mark scholarship coupon used when payment succeeds
+    if (payment.couponCode) {
+      const scholarship = await Scholarship.findOne({ couponCode: normalizeCoupon(payment.couponCode) });
+      if (scholarship && scholarship.status === 'active') {
+        scholarship.status = 'used';
+        scholarship.usedBy = payment.user;
+        scholarship.usedCourse = payment.course;
+        await scholarship.save();
+      }
+    }
+
     const course = await Course.findById(payment.course);
     if (course) {
       course.totalStudents += 1;
@@ -120,27 +136,32 @@ export const getPaymentHistory = async (req, res, next) => {
 export const applyCoupon = async (req, res, next) => {
   try {
     const { couponCode, amount } = req.body;
-    const coupons = {
-      'LEARN10': { discount: 10, description: '10% off' },
-      'WELCOME20': { discount: 20, description: '20% off for new users' },
-      'SCHOLAR50': { discount: 50, description: '50% scholarship discount' },
-      'FLASH30': { discount: 30, description: '30% flash sale' },
-    };
-
-    const coupon = coupons[couponCode.toUpperCase()];
-    if (!coupon) {
-      return res.status(400).json({ success: false, message: 'Invalid coupon code' });
+    if (!couponCode) {
+      return res.status(400).json({ success: false, message: 'Coupon code is required' });
     }
 
-    const discountAmount = Math.round(amount * coupon.discount / 100);
+    const normalized = normalizeCoupon(couponCode);
+    const scholarship = await Scholarship.findOne({
+      couponCode: normalized,
+      status: 'active',
+      validUntil: { $gt: new Date() },
+    });
+
+    if (!scholarship) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired coupon code' });
+    }
+
+    const discount = scholarship.discountPercent || 0;
+    const discountAmount = Math.round(amount * discount / 100);
+
     res.json({
       success: true,
       coupon: {
-        code: couponCode.toUpperCase(),
-        discount: coupon.discount,
+        code: normalized,
+        discount,
         discountAmount,
-        finalAmount: amount - discountAmount,
-        description: coupon.description,
+        finalAmount: Math.max(0, amount - discountAmount),
+        description: `${discount}% off scholarship coupon`,
       },
     });
   } catch (error) {

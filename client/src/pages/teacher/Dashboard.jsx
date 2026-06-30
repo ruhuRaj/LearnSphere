@@ -459,7 +459,27 @@ export default function TeacherDashboard() {
 
           <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
             <h3 className="font-semibold font-[Outfit] mb-4" style={{ color: 'var(--text-primary)' }}>Recent Doubts</h3>
-            <div className="space-y-3">{dashboardData.recentDoubts.length ? dashboardData.recentDoubts.map((doubt) => <div key={doubt.id} className="flex gap-3 rounded-xl p-3" style={{ background: 'var(--bg-tertiary)' }}><div className="w-8 h-8 rounded-full flex items-center justify-center text-xs" style={{ background: 'var(--bg-secondary)' }}>{doubt.avatar}</div><div><p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{doubt.question}</p><p className="text-[10px] mt-1" style={{ color: 'var(--text-tertiary)' }}>{doubt.studentName} • {doubt.courseTitle}</p></div></div>) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No recent doubts yet.</p>}</div>
+            <div className="space-y-3">
+              {dashboardData.recentDoubts.length ? (
+                dashboardData.recentDoubts.map((doubt) => (
+                  <div key={doubt.id} className="flex gap-3 rounded-xl p-3" style={{ background: 'var(--bg-tertiary)' }}>
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-xs" style={{ background: 'var(--bg-secondary)' }}>
+                      {doubt.avatar && (String(doubt.avatar).startsWith('http') || String(doubt.avatar).includes('/')) ? (
+                        <img src={doubt.avatar} alt={doubt.studentName || 'avatar'} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs truncate" style={{ padding: 2 }}>{doubt.avatar || (doubt.studentName ? doubt.studentName.charAt(0) : '?')}</span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{doubt.question}</p>
+                      <p className="text-[10px] mt-1" style={{ color: 'var(--text-tertiary)' }}>{doubt.studentName} • {doubt.courseTitle}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No recent doubts yet.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -736,14 +756,63 @@ export default function TeacherDashboard() {
   return (
     <div style={{ display: 'flex', height: '100vh', background: C.bg, fontFamily: 'system-ui, -apple-system, sans-serif', overflow: 'hidden' }}>
       <aside style={{ width: collapsed ? 70 : 240, flexShrink: 0, background: C.surface, borderRight: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', transition: 'width 0.22s', overflow: 'hidden' }}>
-        <div style={{ padding: collapsed ? '16px 10px' : '16px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 64 }}>
+        <div style={{ padding: collapsed ? '16px 9px' : '16px 14px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 64 }}>
           {!collapsed && <span style={{ fontSize: 15, fontWeight: 800, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}><span style={{ color: C.violet }}>Learn</span>Sphere</span>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => dispatch(toggleTheme())} title="Toggle theme" style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{theme === 'dark' ? '☀️' : '🌙'}</button>
-            <button onClick={() => setCollapsed(v => !v)} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon d={collapsed ? 'M13 5l7 7-7 7M5 5l7 7-7 7' : 'M11 19l-7-7 7-7m8 14l-7-7 7-7'} size={14} color={C.textMid} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 4 : 8 }}>
+            <button onClick={() => dispatch(toggleTheme())} title="Toggle theme" style={{ width: collapsed ? 22 : 30, height: collapsed ? 22 : 30, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: collapsed ? 12 : 13 }}>{theme === 'dark' ? '☀️' : '🌙'}</span></button>
+            <button onClick={() => setCollapsed(v => !v)} style={{ width: collapsed ? 22 : 30, height: collapsed ? 22 : 30, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon d={collapsed ? 'M13 5l7 7-7 7M5 5l7 7-7 7' : 'M11 19l-7-7 7-7m8 14l-7-7 7-7'} size={collapsed ? 12 : 14} color={C.textMid} /></button>
           </div>
         </div>
-        {!collapsed && <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}` }}><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 36, height: 36, borderRadius: 10, display:'flex', alignItems:'center', justifyContent:'center', background:'linear-gradient(135deg,#7C3AED,#0891B2)', color:'#fff', fontWeight:700, fontSize:12 }}>{(user?.name || 'T').split(' ').map((w) => w[0]).join('').slice(0,2).toUpperCase()}</div><div><p style={{ margin:0, fontSize:12, fontWeight:700, color:C.text }}>{user?.name || 'Teacher'}</p><p style={{ margin:0, fontSize:10, color:C.textDim }}>{user?.email || 'teacher@learnsphere.com'}</p></div></div></div>}
+        {!collapsed && (
+          <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user?.name || 'Teacher'}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    objectFit: 'cover',
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg,#7C3AED,#0891B2)',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    flexShrink: 0,
+                  }}
+                >
+                  {(user?.name || 'T')
+                    .split(' ')
+                    .map((w) => w[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.text }}>
+                  {user?.name || 'Teacher'}
+                </p>
+                <p style={{ margin: 0, fontSize: 10, color: C.textDim }}>
+                  {user?.email || 'teacher@learnsphere.com'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <nav style={{ flex: 1, padding: '8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {NAV.map((item) => (
             <button key={item.id} onClick={() => setActive(item.id)} style={{ width: '100%', padding: collapsed ? '10px 0' : '9px 12px', borderRadius: 10, border: 'none', background: active === item.id ? 'rgba(124,58,237,0.12)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 10, cursor: 'pointer', textAlign: 'left' }}>

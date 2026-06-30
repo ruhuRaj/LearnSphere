@@ -64,6 +64,7 @@ export default function FloatingAI() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 20px rgba(99, 102, 241, 0.4)',
         }}
+        aria-label={isOpen ? 'Close AI chat' : 'Open AI chat'}
       >
         {isOpen ? <FiX size={24} /> : <FiMessageCircle size={24} />}
       </motion.button>
@@ -77,7 +78,7 @@ export default function FloatingAI() {
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             style={{
-              position: 'fixed', bottom: '90px', right: '24px', zIndex: 999,
+              position: 'fixed', bottom: '90px', right: '24px', zIndex: 1001,
               width: '380px', maxWidth: 'calc(100vw - 48px)', height: '500px',
               borderRadius: '16px', overflow: 'hidden',
               display: 'flex', flexDirection: 'column',

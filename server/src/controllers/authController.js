@@ -1,4 +1,14 @@
 import User from '../models/User.js';
+import cloudinary from 'cloudinary';
+import fs from 'fs';
+import path from 'path';
+
+// configure cloudinary from env
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -134,15 +144,44 @@ const normalizeLanguage = (value) => {
 };
 
 export const updateProfile = async (req, res) => {
-  const { name, phone, targetExam, language, bio, expertise } = req.body;
+  const { name, phone, targetExam, language, bio, expertise, avatar } = req.body;
   const normalizedTargetExam = normalizeTargetExam(targetExam);
   const normalizedLanguage = normalizeLanguage(language);
+
+  const update = { name, phone, targetExam: normalizedTargetExam, language: normalizedLanguage, bio, expertise };
+  if (avatar) update.avatar = avatar;
+
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    { name, phone, targetExam: normalizedTargetExam, language: normalizedLanguage, bio, expertise },
+    update,
     { new: true, returnDocument: 'after', runValidators: true }
   );
   res.json({ success: true, user });
+};
+
+// Upload avatar via server -> Cloudinary (signed)
+export const uploadAvatar = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
+
+  const localPath = req.file.path;
+  try {
+    const result = await cloudinary.v2.uploader.upload(localPath, { folder: 'avatars', use_filename: true });
+    const avatarUrl = result.secure_url || result.url;
+
+    const user = await User.findByIdAndUpdate(req.user._id, { avatar: avatarUrl }, { new: true, runValidators: true });
+
+    // remove local file
+    fs.unlink(localPath, () => {});
+
+    res.json({ success: true, user });
+  } catch (err) {
+    // cleanup
+    try { fs.unlinkSync(localPath); } catch (e) {}
+    console.error('Cloudinary upload error', err.message || err);
+    res.status(500).json({ success: false, message: 'Failed to upload avatar' });
+  }
 };
 
 // @desc    Logout
