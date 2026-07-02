@@ -29,7 +29,13 @@ const callAI = async (endpoint, data) => {
 
 // Generate test questions
 export const generateTest = async ({ subject, topic, difficulty, count, examType }) => {
-  return callAI('/ai/generate-test', { subject, topic, difficulty, count, exam_type: examType });
+  return callAI('/ai/generate-test', {
+    topic,
+    difficulty,
+    num_questions: count,
+    category: examType || 'topic',
+    subject,
+  });
 };
 
 // Solve a doubt

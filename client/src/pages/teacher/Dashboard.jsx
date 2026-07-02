@@ -42,6 +42,100 @@ const Icon = ({ d, size = 18, color = 'currentColor' }) => (
   </svg>
 );
 
+/* Test History Component with Course Filtering */
+const TestsSection = ({ teacherCourses, teacherTests, testForm, testFile, setTestForm, setTestFile, actionBusy, testHistoryCourse, setTestHistoryCourse, loadingTests, submitAction }) => {
+  const filteredTeacherTests = useMemo(() => {
+    return teacherTests.filter((test) => {
+      const courseId = test.course?._id || test.course;
+      const matchesCourse = !testHistoryCourse || courseId === testHistoryCourse;
+      return matchesCourse;
+    });
+  }, [teacherTests, testHistoryCourse]);
+
+  return (
+    <div className="space-y-4">
+      {/* Create Test Form */}
+      <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
+        <h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Test</h2>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Upload a PDF question paper for your students to view.</p>
+        <div className="space-y-3">
+          <input className="input" placeholder="Test title" value={testForm.title} onChange={(e) => setTestForm({ ...testForm, title: e.target.value })} />
+          <select className="input" value={testForm.course} onChange={(e) => setTestForm({ ...testForm, course: e.target.value })}>
+            <option value="">Select a course</option>
+            {teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}
+          </select>
+          <div className="grid grid-cols-2 gap-3">
+            <input className="input" type="number" value={testForm.questionCount} onChange={(e) => setTestForm({ ...testForm, questionCount: e.target.value })} placeholder="No. of questions" />
+            <input className="input" type="number" value={testForm.totalMarks} onChange={(e) => setTestForm({ ...testForm, totalMarks: e.target.value })} placeholder="Total Marks" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <input className="input" type="number" value={testForm.duration} onChange={(e) => setTestForm({ ...testForm, duration: e.target.value })} placeholder="Time (minutes)" />
+            <input className="input" placeholder="Topic name" value={testForm.topicName} onChange={(e) => setTestForm({ ...testForm, topicName: e.target.value })} />
+          </div>
+          <label className="input" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 12, cursor: 'pointer' }}>
+            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Upload PDF question paper</span>
+            <input type="file" accept="application/pdf" onChange={(e) => setTestFile(e.target.files?.[0] || null)} />
+          </label>
+          {testFile && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Selected file: {testFile.name}</p>}
+          <button onClick={() => submitAction('test')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Creating...' : 'Create Test'}</button>
+        </div>
+      </div>
+
+      {/* Test History */}
+      <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Created test history</h3>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>View and manage tests created for each course.</p>
+          </div>
+          {loadingTests && <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Loading…</span>}
+        </div>
+
+        {/* Course Filter */}
+        <select className="input mb-4" value={testHistoryCourse} onChange={(e) => setTestHistoryCourse(e.target.value)}>
+          <option value="">All courses</option>
+          {teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}
+        </select>
+
+        {/* Tests Grid */}
+        {loadingTests ? (
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading your tests...</p>
+        ) : filteredTeacherTests.length ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTeacherTests.map((test) => (
+              <div key={test._id} className="rounded-2xl p-4" style={{ background: 'var(--bg-tertiary)' }}>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{test.title || 'Untitled Test'}</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{test.topicName || 'Topic'}</p>
+                  </div>
+                  <span className="badge badge-outline text-[10px]" style={{ color: 'var(--primary)' }}>{test.duration || 0} min</span>
+                </div>
+                <div className="text-[11px] space-y-1 mb-3" style={{ color: 'var(--text-secondary)' }}>
+                  <p>Questions: {test.questionCount || 0}</p>
+                  <p>Marks: {test.totalMarks || 0}</p>
+                  <p>Date: {new Date(test.createdAt).toLocaleDateString('en-IN')}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {(test.pdfUrl || test.pdfLocalPath) ? (
+                    <a href={test.pdfUrl || test.pdfLocalPath} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm flex-1">
+                      View PDF
+                    </a>
+                  ) : (
+                    <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>No PDF uploaded</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No tests created yet. Create your first test above.</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function TeacherDashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -76,7 +170,11 @@ export default function TeacherDashboard() {
   const [videoHistoryChapter, setVideoHistoryChapter] = useState('');
   const [noteHistoryCourse, setNoteHistoryCourse] = useState('');
   const [noteHistoryChapter, setNoteHistoryChapter] = useState('');
-  const [testForm, setTestForm] = useState({ title: '', course: '', duration: 30, totalMarks: 40, type: 'topic' });
+  const [testForm, setTestForm] = useState({ title: '', course: '', duration: "", totalMarks: "", type: 'topic', questionCount: "", topicName: '' });
+  const [testFile, setTestFile] = useState(null);
+  const [teacherTests, setTeacherTests] = useState([]);
+  const [loadingTests, setLoadingTests] = useState(false);
+  const [testHistoryCourse, setTestHistoryCourse] = useState('');
   const [liveForm, setLiveForm] = useState({ title: '', course: '', scheduledAt: new Date(Date.now() + 3600000).toISOString().slice(0, 16), duration: 60 });
   const [allDoubts, setAllDoubts] = useState([]);
   const [doubtReplyDrafts, setDoubtReplyDrafts] = useState({});
@@ -118,6 +216,18 @@ export default function TeacherDashboard() {
       console.error('Failed to load teacher notes:', error);
     } finally {
       setLoadingNotes(false);
+    }
+  };
+
+  const loadTeacherTests = async () => {
+    try {
+      setLoadingTests(true);
+      const response = await api.get('/tests/my-tests');
+      setTeacherTests(response?.data?.tests?.map((test) => ({ ...test, id: test._id || test.id })) || []);
+    } catch (error) {
+      console.error('Failed to load teacher tests:', error);
+    } finally {
+      setLoadingTests(false);
     }
   };
 
@@ -231,6 +341,7 @@ export default function TeacherDashboard() {
     if (user?.role === 'teacher') {
       loadDashboardData();
       loadTeacherNotes();
+      loadTeacherTests();
       loadTeacherLiveClasses();
     } else {
       setIsLoading(false);
@@ -328,18 +439,25 @@ export default function TeacherDashboard() {
           toast.error('Please fill title and course');
           return;
         }
-        await api.post('/tests', {
-          title: testForm.title,
-          course: testForm.course,
-          type: testForm.type,
-          duration: Number(testForm.duration || 30),
-          totalMarks: Number(testForm.totalMarks || 40),
-          questions: [
-            { text: 'What is the main concept covered in this topic?', type: 'mcq', options: [{ text: 'Concept A', isCorrect: true }, { text: 'Concept B', isCorrect: false }, { text: 'Concept C', isCorrect: false }, { text: 'Concept D', isCorrect: false }], marks: 10 },
-          ],
-          isAIGenerated: false,
-          isPublished: true,
-        });
+
+        const formData = new FormData();
+        formData.append('title', testForm.title);
+        formData.append('course', testForm.course);
+        formData.append('duration', Number(testForm.duration || 30));
+        formData.append('totalMarks', Number(testForm.totalMarks || 40));
+        formData.append('questionCount', Number(testForm.questionCount || 0));
+        formData.append('topicName', testForm.topicName || '');
+        formData.append('type', testForm.type || 'topic');
+        formData.append('isPublished', 'true');
+
+        if (testFile) {
+          formData.append('file', testFile);
+        }
+
+        await api.post('/tests', formData);
+        setTestForm({ title: '', course: '', duration: 30, totalMarks: 40, type: 'topic', questionCount: 0, topicName: '' });
+        setTestFile(null);
+        await loadTeacherTests();
         toast.success('Test created successfully');
       }
 
@@ -612,7 +730,7 @@ export default function TeacherDashboard() {
       )) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No doubts available yet.</p>}
     </div>,
     'create-course': <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Course</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Set up your next class and publish it instantly.</p><Link to="/teacher/create-course" className="btn btn-primary btn-sm">Open Course Builder</Link></div>,
-    tests: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Test</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Generate or publish tests for your courses.</p><div className="space-y-3"><input className="input" placeholder="Test title" value={testForm.title} onChange={(e) => setTestForm({ ...testForm, title: e.target.value })} /><select className="input" value={testForm.course} onChange={(e) => setTestForm({ ...testForm, course: e.target.value })}><option value="">Select a course</option>{teacherCourses.map((course) => <option key={course._id} value={course._id}>{course.title}</option>)}</select><div className="grid grid-cols-2 gap-3"><input className="input" type="number" value={testForm.duration} onChange={(e) => setTestForm({ ...testForm, duration: Number(e.target.value) })} placeholder="Duration (min)" /><input className="input" type="number" value={testForm.totalMarks} onChange={(e) => setTestForm({ ...testForm, totalMarks: Number(e.target.value) })} placeholder="Total marks" /></div></div><button onClick={() => submitAction('test')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Creating...' : 'Create Test'}</button></div>,
+    tests: <TestsSection teacherCourses={teacherCourses} teacherTests={teacherTests} testForm={testForm} testFile={testFile} setTestForm={setTestForm} setTestFile={setTestFile} actionBusy={actionBusy} testHistoryCourse={testHistoryCourse} setTestHistoryCourse={setTestHistoryCourse} loadingTests={loadingTests} submitAction={submitAction} />,
     courses: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>My Courses</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>All courses created and managed by you.</p><div className="space-y-3">{teacherCourses.length ? teacherCourses.map((course) => {
       const learners = Number(course.totalStudents) || 0;
       return (

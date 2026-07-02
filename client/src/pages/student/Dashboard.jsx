@@ -7,6 +7,28 @@ import { toggleTheme } from '../../features/uiSlice';
 import LiveClasses from './LiveClasses';
 import MockTestStudio from './MockTestStudio';
 
+const TeacherTestViewer = ({ test }) => {
+  if (!test) return null;
+
+  const pdfUrl = test?.pdfUrl || test?.pdfLocalPath || '';
+
+  return (
+    <div style={{ width: '100%', height: '100%', borderRadius: 16 }}>
+      {pdfUrl ? (
+        <iframe
+          title={test.title}
+          src={pdfUrl}
+          style={{ width: '100%', height: '100%', borderRadius: 16, border: 'none' }}
+        />
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+          <p>PDF is being prepared. Please check again shortly.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CHAT_STARTERS = [
   'Explain Newton\'s second law with an example',
   'What is the difference between speed and velocity?',
@@ -27,6 +49,7 @@ const NAV = [
   { id: 'buy', label: 'Buy Courses', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' },
   { id: 'live', label: 'Live Classes', icon: 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
   { id: 'mocktests', label: 'Mock Tests', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  { id: 'teacherTests', label: 'Teacher Tests', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
 ];
 
 const COURSE_GRADIENTS = [
@@ -767,6 +790,77 @@ function AIAssistant({ courses }) {
   );
 }
 
+/* ── TEACHER TESTS ── */
+function TeacherTests({ courses, teacherTests = [] }) {
+  const [selCourse, setSelCourse] = useState(courses[0] || null);
+
+  useEffect(() => {
+    if (courses[0] && !selCourse) {
+      setSelCourse(courses[0]);
+    }
+  }, [courses, selCourse]);
+
+  const filteredTests = useMemo(() => {
+    if (!selCourse) return [];
+    const courseId = selCourse._id || selCourse.id;
+    return teacherTests.filter((test) => {
+      const testCourseId = test.course?._id || test.course?.id || test.course;
+      return testCourseId === courseId;
+    });
+  }, [teacherTests, selCourse]);
+
+  return (
+    <div>
+      <h2 style={sectionTitle}>Teacher Tests</h2>
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: C.textMid }}>View teacher-created question papers in PDF format.</p>
+      <CourseTopicPicker courses={courses} selectedCourse={selCourse} setSelectedCourse={setSelCourse} setSelectedTopic={() => {}} />
+
+      {filteredTests.length ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+          {filteredTests.map((test) => (
+            <Card key={test._id} hover style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: C.text }}>{test.title}</p>
+                  <p style={{ margin: 0, fontSize: 11, color: C.textDim }}>{test.topicName || 'Topic'}</p>
+                </div>
+                <Tag color={C.amber} bg={C.amberSoft}>{test.duration || 0} min</Tag>
+              </div>
+              <div style={{ display: 'flex', gap: 12, fontSize: 12, color: C.textMid }}>
+                <span>{test.questionCount || 0} Questions</span>
+                <span>•</span>
+                <span>{test.totalMarks || 0} Marks</span>
+              </div>
+              <div style={{ flex: 1 }}></div>
+              <button
+                onClick={() => {
+                  const pdfUrl = test?.pdfUrl || test?.pdfLocalPath || '';
+                  if (pdfUrl) window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                }}
+                style={{
+                  width: '100%',
+                  padding: '9px',
+                  borderRadius: 10,
+                  background: C.violet,
+                  border: 'none',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                View Paper
+              </button>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <EmptyState icon="📄" text="No tests for this course yet" sub="Check back after your teacher uploads test papers." />
+      )}
+    </div>
+  );
+}
+
 /* ── BUY COURSES ── */
 function BuyCourses({ user, courses = [], onEnroll, enrollingCourseId }) {
   const [search, setSearch] = useState('');
@@ -887,6 +981,8 @@ export default function StudentPortal() {
   const [allCourses, setAllCourses] = useState([]);
   const [notes, setNotes] = useState([]);
   const [videosByCourse, setVideosByCourse] = useState({});
+  const [teacherTests, setTeacherTests] = useState([]);
+  const [selectedTeacherTest, setSelectedTeacherTest] = useState(null);
   const [active, setActive] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
   const [enrollingCourseId, setEnrollingCourseId] = useState(null);
@@ -910,10 +1006,11 @@ export default function StudentPortal() {
     const loadDashboardData = async () => {
       try {
         setLoading(true);
-        const [enrolledResponse, notesResponse, catalogResponse] = await Promise.all([
+        const [enrolledResponse, notesResponse, catalogResponse, testsResponse] = await Promise.all([
           api.get('/courses/enrolled'),
           api.get('/notes'),
           api.get('/courses?limit=50'),
+          api.get('/tests?limit=20'),
         ]);
 
         if (!isMounted) return;
@@ -941,6 +1038,9 @@ export default function StudentPortal() {
 
         setCourses(enrolled);
         setAllCourses(catalog);
+        const tests = testsResponse?.data?.tests || [];
+        setTeacherTests(tests);
+        setSelectedTeacherTest((current) => current || tests[0] || null);
         setNotes((notesResponse?.data?.notes || []).map((note) => ({
           ...note,
           id: note._id || note.id,
@@ -1016,6 +1116,7 @@ export default function StudentPortal() {
     buy: <BuyCourses user={user} courses={allCourses} onEnroll={handleEnrollCourse} enrollingCourseId={enrollingCourseId} />,
     live: <LiveClasses />,
     mocktests: <MockTestStudio />,
+    teacherTests: <TeacherTests courses={courses} teacherTests={teacherTests} />,
   };
 
   const SB_W = collapsed ? 64 : 220;
