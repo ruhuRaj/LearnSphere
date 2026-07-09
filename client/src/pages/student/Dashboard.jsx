@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { logout } from '../../features/authSlice';
 import { toggleTheme } from '../../features/uiSlice';
+import MessageRenderer from '../../components/common/MessageRenderer';
 import LiveClasses from './LiveClasses';
 import MockTestStudio from './MockTestStudio';
 
@@ -711,17 +712,27 @@ function AIAssistant({ courses }) {
     ],
   };
 
-  const ask = (q) => {
-    const question = q || input;
-    if (!question.trim()) return;
+  const ask = async (q) => {
+    const question = (q || input).trim();
+    if (!question) return;
     setMsgs(m => [...m, { from: 'user', text: question }]);
     setInput('');
     setLoading(true);
-    setTimeout(() => {
-      const reply = RESPONSES.default[Math.floor(Math.random() * RESPONSES.default.length)];
+
+    try {
+      const { data } = await api.post('/ai/solve-doubt', {
+        question,
+        subject: 'General',
+        context: '',
+      });
+      const reply = data?.response || 'Sorry, I could not generate an answer right now.';
       setMsgs(m => [...m, { from: 'ai', text: reply }]);
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.response?.data?.message || 'The AI service is temporarily unavailable.';
+      setMsgs(m => [...m, { from: 'ai', text: `Sorry — ${message}` }]);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -752,8 +763,14 @@ function AIAssistant({ courses }) {
                 maxWidth: '72%', padding: '10px 14px',
                 borderRadius: m.from === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                 background: m.from === 'user' ? C.violet : C.surfaceHover,
-                color: C.text, fontSize: 13, lineHeight: 1.65, whiteSpace: 'pre-wrap',
-              }}>{m.text}</div>
+                color: C.text, fontSize: 13, lineHeight: 1.65,
+              }}>
+                {m.from === 'user' ? (
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                ) : (
+                  <MessageRenderer content={m.text} />
+                )}
+              </div>
             </div>
           ))}
           {loading && (

@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiSend, FiMessageCircle, FiCpu } from 'react-icons/fi';
 import { useSelector } from 'react-redux';
 import api from '../../services/api';
+import MessageRenderer from '../common/MessageRenderer';
 
 export default function FloatingAI() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { id: 1, role: 'ai', text: 'Hi! 👋 I\'m your AI study assistant. Ask me any doubt about Physics, Chemistry, or Mathematics!' },
+    { id: 1, role: 'ai', text: 'Hi! 👋 I\'m your AI study assistant. Ask me any doubt regarding your subjects !!' },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +59,7 @@ export default function FloatingAI() {
         whileTap={{ scale: 0.95 }}
         style={{
           position: 'fixed', bottom: '24px', right: '24px', zIndex: 1000,
-          width: '56px', height: '56px', borderRadius: '50%',
+          width: '45px', height: '45px', borderRadius: '50%',
           background: 'linear-gradient(135deg, #6366f1, #a855f7)',
           color: '#fff', border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -116,10 +117,13 @@ export default function FloatingAI() {
                     color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
                     fontSize: '13px',
                     lineHeight: 1.5,
-                    whiteSpace: 'pre-wrap',
                   }}
                 >
-                  {msg.text}
+                  {msg.role === 'user' ? (
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                  ) : (
+                    <MessageRenderer content={msg.text} />
+                  )}
                 </div>
               ))}
               {isLoading && (

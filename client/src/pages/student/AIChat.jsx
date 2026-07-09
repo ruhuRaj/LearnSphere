@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import { HiOutlineSparkles, HiOutlinePaperAirplane, HiOutlineBookOpen, HiOutlineAcademicCap } from 'react-icons/hi';
+import api from '../../services/api';
+import MessageRenderer from '../../components/common/MessageRenderer';
 
 const suggestedPrompts = [
   'Explain Newton\'s Third Law with examples',
@@ -14,15 +16,6 @@ const suggestedPrompts = [
 const initialMessages = [
   { role: 'ai', content: 'Hello! 👋 I\'m your AI Study Assistant powered by LearnSphere. I can help you with:\n\n• **Doubt solving** — Ask any academic question\n• **Step-by-step solutions** — For Physics, Chemistry, Maths, Biology\n• **Concept explanations** — Get clear, detailed explanations\n• **Practice problems** — I\'ll generate questions for you\n\nWhat would you like to learn today?', time: 'Now' },
 ];
-
-function formatAIResponse(topic) {
-  const responses = {
-    "newton": "**Newton's Third Law** states that for every action, there is an equal and opposite reaction.\n\n**Key Points:**\n1. Forces always occur in pairs\n2. Action and reaction forces act on *different* bodies\n3. They are equal in magnitude but opposite in direction\n\n**Examples:**\n- 🚀 A rocket pushes exhaust gases downward; gases push the rocket upward\n- 🏊 A swimmer pushes water backward; water pushes the swimmer forward\n- 📚 A book on a table: weight pushes down, normal force pushes up\n\n**Formula:** F₁₂ = -F₂₁\n\nWould you like me to solve a numerical problem on this topic?",
-    "default": "Great question! Let me break this down for you.\n\n**Key Concepts:**\n1. This involves fundamental principles from your syllabus\n2. The solution approach requires understanding the underlying theory\n3. Let me walk you through step by step\n\n**Solution Approach:**\n- First, identify the given information\n- Apply the relevant formula or principle\n- Solve systematically\n\n**Pro Tip:** 💡 This type of question frequently appears in JEE/NEET exams. Practice similar problems from your PYQ bank.\n\nWant me to generate practice problems on this topic?"
-  };
-  const key = Object.keys(responses).find(k => topic.toLowerCase().includes(k));
-  return responses[key] || responses.default;
-}
 
 export default function AIChat() {
   const { user } = useSelector((state) => state.auth);
@@ -38,19 +31,30 @@ export default function AIChat() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const sendMessage = (text) => {
-    if (!text.trim()) return;
-    const userMsg = { role: 'user', content: text, time: 'Now' };
+  const sendMessage = async (text) => {
+    const trimmedText = text.trim();
+    if (!trimmedText) return;
+    const userMsg = { role: 'user', content: trimmedText, time: 'Now' };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMsg = { role: 'ai', content: formatAIResponse(text), time: 'Now' };
+    try {
+      const subject = selectedSubject === 'All' ? 'General' : selectedSubject;
+      const { data } = await api.post('/ai/solve-doubt', {
+        question: trimmedText,
+        subject,
+        context: '',
+      });
+      const aiMsg = { role: 'ai', content: data?.response || 'Sorry, I could not generate an answer right now.', time: 'Now' };
       setMessages((prev) => [...prev, aiMsg]);
+    } catch (error) {
+      const message = error?.response?.data?.detail || error?.response?.data?.message || 'The AI service is temporarily unavailable.';
+      const aiMsg = { role: 'ai', content: `Sorry — ${message}`, time: 'Now' };
+      setMessages((prev) => [...prev, aiMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1500 + Math.random() * 1000);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -92,7 +96,7 @@ export default function AIChat() {
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] ${msg.role === 'user' ? '' : 'flex gap-3'}`}>
                 {msg.role === 'ai' && (
-                  <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 mt-1">
+                  <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shrink-0 mt-1">
                     <HiOutlineSparkles className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -101,9 +105,13 @@ export default function AIChat() {
                   color: msg.role === 'user' ? 'white' : 'var(--text-primary)',
                   borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px',
                   borderBottomLeftRadius: msg.role === 'ai' ? '4px' : '16px',
-                  whiteSpace: 'pre-line',
+                  whiteSpace: msg.role === 'user' ? 'pre-line' : 'normal',
                 }}>
-                  {msg.content}
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <MessageRenderer content={msg.content} />
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -111,7 +119,7 @@ export default function AIChat() {
 
           {isTyping && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shrink-0">
                 <HiOutlineSparkles className="w-4 h-4 text-white" />
               </div>
               <div className="p-4 rounded-2xl" style={{ background: 'var(--bg-tertiary)', borderBottomLeftRadius: '4px' }}>

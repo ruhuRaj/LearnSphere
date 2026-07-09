@@ -7,12 +7,103 @@ from pydantic import BaseModel
 from typing import List, Optional
 import random
 import os
+import httpx
 try:
     import openai
 except Exception:
     openai = None
 
 router = APIRouter()
+
+
+def extract_gemini_text(payload) -> str:
+    """Extract a plain-text response from Gemini's JSON payload."""
+    if not isinstance(payload, dict):
+        return ""
+
+    candidates = payload.get("candidates") or []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        content = candidate.get("content") or {}
+        parts = content.get("parts") or []
+        for part in parts:
+            if isinstance(part, dict):
+                text = part.get("text")
+                if isinstance(text, str) and text.strip():
+                    return text.strip()
+    return ""
+
+
+def call_gemini(prompt: str) -> Optional[str]:
+    """Call the Gemini API directly using the configured API key."""
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return None
+
+    model_name = os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
+    candidate_models = [model_name, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"]
+
+    for candidate_model in candidate_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{candidate_model}:generateContent?key={api_key}"
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 2048},
+        }
+        try:
+            response = httpx.post(url, json=payload, timeout=45)
+            response.raise_for_status()
+            data = response.json()
+            text = extract_gemini_text(data)
+            if text:
+                return text
+        except Exception:
+            continue
+
+    return None
+
+
+def build_fallback_response(question: str, subject: str) -> str:
+    """Create a helpful educational explanation when AI is unavailable."""
+    q = (question or "").strip().lower()
+    subject_name = (subject or "General").strip()
+
+    if any(word in q for word in ["deeper", "deeply"]):
+        return (
+            f"Here is a deeper explanation for {subject_name}: force is the cause of a change in motion, and acceleration is how quickly that motion changes. "
+            "Newton's second law states that the net force acting on an object is equal to its mass multiplied by its acceleration, F = ma. "
+            "This means a stronger force causes a larger acceleration, while a larger mass resists motion more and therefore accelerates less for the same force. "
+            "A simple example is pushing a light trolley and a heavy truck with the same force: the trolley speeds up much more quickly because it has less mass."
+        )
+
+    if "newton" in q and "second" in q:
+        return (
+            "Newton's second law is one of the most important laws of motion. It states that the acceleration of an object depends on the net force acting on it and its mass. "
+            "The relationship is written as F = ma, where F is the net force, m is the mass, and a is the acceleration. "
+            "This means a larger force produces a larger acceleration, while a larger mass produces a smaller acceleration for the same force. "
+            "Example: if a 2 kg box is pushed with a net force of 6 N, then a = F/m = 6/2 = 3 m/s². "
+            "So the box speeds up at 3 meters per second every second. "
+            "A deeper way to think about it is that force changes motion, and the amount of change depends on how much matter is resisting that change."
+        )
+
+    if any(word in q for word in ["explain", "meaning", "why", "concept"]):
+        if "newton" in q or "force" in q or "acceleration" in q:
+            return (
+                f"For {subject_name}, the important idea is that force is what changes motion, and acceleration is the rate at which that motion changes. "
+                "The law tells us that the same force will cause a smaller mass to accelerate more than a larger mass. "
+                "In everyday life, this is why a light push moves a shopping cart easily, but the same push does not move a heavy truck as quickly."
+            )
+
+    if "force" in q or "acceleration" in q:
+        return (
+            f"For {subject_name}, the key idea is to identify the given values, choose the correct formula, and then solve step by step. "
+            f"If you share the exact problem, I can explain it in a clearer way with a worked example."
+        )
+
+    return (
+        f"Here is a deeper explanation for your question in {subject_name}: first identify the main idea, then break it into smaller steps, "
+        "and connect each step to the concept being tested. If you want, I can also turn this into a short example or a solved problem."
+    )
 
 # ── Schemas ──────────────────────────────────
 
@@ -392,35 +483,23 @@ async def generate_test(req: TestGenerationRequest, debug: bool = False):
 @router.post("/solve-doubt")
 async def solve_doubt(req: DoubtRequest):
     """AI-powered doubt solving with step-by-step explanations."""
-    # Placeholder response — would use LangChain RAG in production
-    response = f"""**Answer to your question about {req.subject}:**
+    prompt = (
+        f"You are a helpful study assistant for students. Answer the following question clearly and use a friendly tone. "
+        f"Subject: {req.subject or 'General'}. "
+        f"Question: {req.question}. "
+        "If the question is mathematical or scientific, show the reasoning step by step. "
+        "Keep the answer concise but useful for learning."
+    )
 
-Your question: "{req.question}"
+    gemini_response = call_gemini(prompt)
+    if gemini_response:
+        return {
+            "success": True,
+            "response": gemini_response,
+            "provider": "gemini",
+        }
 
-**Step-by-step explanation:**
-
-1. **Identify the key concepts:** This question involves fundamental principles of {req.subject}.
-
-2. **Apply the relevant formula/theory:** Based on the concepts involved, we need to use the appropriate approach.
-
-3. **Solution:** The detailed solution involves understanding the underlying principles and applying them systematically.
-
-**Key Takeaway:** Make sure to practice similar problems from your textbook and previous year papers.
-
-**Related Topics to Review:**
-- Fundamental concepts of {req.subject}
-- Practice problems from NCERT
-- Previous year JEE/NEET questions on this topic
-
-💡 **Pro Tip:** This is a commonly tested concept. Make sure to understand the derivation as well!
-"""
-    
-    return {
-        "success": True,
-        "response": response,
-        "relatedTopics": [req.subject, "Problem Solving", "Exam Strategy"],
-        "confidence": 0.92,
-    }
+    raise HTTPException(status_code=502, detail="Gemini API is unavailable. Please set a valid GEMINI_API_KEY.")
 
 # ── Content Generation ───────────────────────
 
