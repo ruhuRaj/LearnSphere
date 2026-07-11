@@ -43,7 +43,7 @@ const Icon = ({ d, size = 18, color = 'currentColor' }) => (
 );
 
 /* Test History Component with Course Filtering */
-const TestsSection = ({ teacherCourses, teacherTests, testForm, testFile, setTestForm, setTestFile, actionBusy, testHistoryCourse, setTestHistoryCourse, loadingTests, submitAction }) => {
+const TestsSection = ({ teacherCourses, teacherTests, testForm, testFile, setTestForm, setTestFile, actionBusy, testHistoryCourse, setTestHistoryCourse, loadingTests, submitAction, handleDeleteTest, deletingTestId }) => {
   const filteredTeacherTests = useMemo(() => {
     return teacherTests.filter((test) => {
       const courseId = test.course?._id || test.course;
@@ -72,12 +72,16 @@ const TestsSection = ({ teacherCourses, teacherTests, testForm, testFile, setTes
             <input className="input" type="number" value={testForm.duration} onChange={(e) => setTestForm({ ...testForm, duration: e.target.value })} placeholder="Time (minutes)" />
             <input className="input" placeholder="Topic name" value={testForm.topicName} onChange={(e) => setTestForm({ ...testForm, topicName: e.target.value })} />
           </div>
+          <textarea className="input" rows={3} placeholder="AI prompt for question generation (e.g. Create 10 mixed difficulty MCQs on integration for Class 12)" value={testForm.aiPrompt} onChange={(e) => setTestForm({ ...testForm, aiPrompt: e.target.value })} />
           <label className="input" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 12, cursor: 'pointer' }}>
             <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Upload PDF question paper</span>
             <input type="file" accept="application/pdf" onChange={(e) => setTestFile(e.target.files?.[0] || null)} />
           </label>
           {testFile && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Selected file: {testFile.name}</p>}
-          <button onClick={() => submitAction('test')} disabled={actionBusy} className="btn btn-primary btn-sm mt-3">{actionBusy ? 'Creating...' : 'Create Test'}</button>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button onClick={() => submitAction('test')} disabled={actionBusy} className="btn btn-primary btn-sm">{actionBusy ? 'Creating...' : 'Create Test'}</button>
+            <button onClick={() => submitAction('test', { generateWithAI: true })} disabled={actionBusy} className="btn btn-ghost btn-sm">{actionBusy ? 'Generating...' : 'Generate through AI'}</button>
+          </div>
         </div>
       </div>
 
@@ -124,6 +128,14 @@ const TestsSection = ({ teacherCourses, teacherTests, testForm, testFile, setTes
                   ) : (
                     <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>No PDF uploaded</span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTest(test._id || test.id)}
+                    className="btn btn-error btn-sm"
+                    disabled={deletingTestId === (test._id || test.id)}
+                  >
+                    {deletingTestId === (test._id || test.id) ? 'Deleting…' : 'Delete'}
+                  </button>
                 </div>
               </div>
             ))}
@@ -170,11 +182,12 @@ export default function TeacherDashboard() {
   const [videoHistoryChapter, setVideoHistoryChapter] = useState('');
   const [noteHistoryCourse, setNoteHistoryCourse] = useState('');
   const [noteHistoryChapter, setNoteHistoryChapter] = useState('');
-  const [testForm, setTestForm] = useState({ title: '', course: '', duration: "", totalMarks: "", type: 'topic', questionCount: "", topicName: '' });
+  const [testForm, setTestForm] = useState({ title: '', course: '', duration: "", totalMarks: "", type: 'topic', questionCount: "", topicName: '', aiPrompt: '' });
   const [testFile, setTestFile] = useState(null);
   const [teacherTests, setTeacherTests] = useState([]);
   const [loadingTests, setLoadingTests] = useState(false);
   const [testHistoryCourse, setTestHistoryCourse] = useState('');
+  const [deletingTestId, setDeletingTestId] = useState(null);
   const [liveForm, setLiveForm] = useState({ title: '', course: '', scheduledAt: new Date(Date.now() + 3600000).toISOString().slice(0, 16), duration: 60 });
   const [allDoubts, setAllDoubts] = useState([]);
   const [doubtReplyDrafts, setDoubtReplyDrafts] = useState({});
@@ -228,6 +241,23 @@ export default function TeacherDashboard() {
       console.error('Failed to load teacher tests:', error);
     } finally {
       setLoadingTests(false);
+    }
+  };
+
+  const handleDeleteTest = async (testId) => {
+    const confirmDelete = window.confirm('Delete this test and its PDF?');
+    if (!confirmDelete) return;
+
+    try {
+      setDeletingTestId(testId);
+      await api.delete(`/tests/${testId}`);
+      toast.success('Test deleted successfully');
+      await loadTeacherTests();
+    } catch (error) {
+      console.error('Failed to delete test:', error);
+      toast.error(error.response?.data?.message || 'Could not delete test');
+    } finally {
+      setDeletingTestId(null);
     }
   };
 
@@ -374,7 +404,7 @@ export default function TeacherDashboard() {
     }
   };
 
-  const submitAction = async (actionType = activeAction) => {
+  const submitAction = async (actionType = activeAction, options = {}) => {
     if (!actionType) return;
 
     try {
@@ -440,6 +470,12 @@ export default function TeacherDashboard() {
           return;
         }
 
+        const shouldGenerateWithAI = Boolean(options.generateWithAI);
+        if (shouldGenerateWithAI && !testForm.aiPrompt?.trim() && !testForm.topicName?.trim()) {
+          toast.error('Please enter an AI prompt or topic name');
+          return;
+        }
+
         const formData = new FormData();
         formData.append('title', testForm.title);
         formData.append('course', testForm.course);
@@ -447,18 +483,20 @@ export default function TeacherDashboard() {
         formData.append('totalMarks', Number(testForm.totalMarks || 40));
         formData.append('questionCount', Number(testForm.questionCount || 0));
         formData.append('topicName', testForm.topicName || '');
+        formData.append('aiPrompt', testForm.aiPrompt || '');
+        formData.append('generateWithAI', shouldGenerateWithAI ? 'true' : 'false');
         formData.append('type', testForm.type || 'topic');
         formData.append('isPublished', 'true');
 
-        if (testFile) {
+        if (testFile && !shouldGenerateWithAI) {
           formData.append('file', testFile);
         }
 
         await api.post('/tests', formData);
-        setTestForm({ title: '', course: '', duration: 30, totalMarks: 40, type: 'topic', questionCount: 0, topicName: '' });
+        setTestForm({ title: '', course: '', duration: 30, totalMarks: 40, type: 'topic', questionCount: 0, topicName: '', aiPrompt: '' });
         setTestFile(null);
         await loadTeacherTests();
-        toast.success('Test created successfully');
+        toast.success(shouldGenerateWithAI ? 'AI-generated PDF test created successfully' : 'Test created successfully');
       }
 
       if (actionType === 'live') {
@@ -730,7 +768,7 @@ export default function TeacherDashboard() {
       )) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No doubts available yet.</p>}
     </div>,
     'create-course': <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Course</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Set up your next class and publish it instantly.</p><Link to="/teacher/create-course" className="btn btn-primary btn-sm">Open Course Builder</Link></div>,
-    tests: <TestsSection teacherCourses={teacherCourses} teacherTests={teacherTests} testForm={testForm} testFile={testFile} setTestForm={setTestForm} setTestFile={setTestFile} actionBusy={actionBusy} testHistoryCourse={testHistoryCourse} setTestHistoryCourse={setTestHistoryCourse} loadingTests={loadingTests} submitAction={submitAction} />,
+    tests: <TestsSection teacherCourses={teacherCourses} teacherTests={teacherTests} testForm={testForm} testFile={testFile} setTestForm={setTestForm} setTestFile={setTestFile} actionBusy={actionBusy} testHistoryCourse={testHistoryCourse} setTestHistoryCourse={setTestHistoryCourse} loadingTests={loadingTests} submitAction={submitAction} handleDeleteTest={handleDeleteTest} deletingTestId={deletingTestId} />,
     courses: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>My Courses</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>All courses created and managed by you.</p><div className="space-y-3">{teacherCourses.length ? teacherCourses.map((course) => {
       const learners = Number(course.totalStudents) || 0;
       return (

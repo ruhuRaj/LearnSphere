@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import Course from '../models/Course.js';
 import User from '../models/User.js';
+import Video from '../models/Video.js';
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -14,9 +15,8 @@ const countLessonsFromChapters = (course) => {
   const chapters = Array.isArray(course?.chapters) ? course.chapters : [];
 
   return chapters.reduce((sum, chapter) => {
-    const topicCount = Array.isArray(chapter?.topics) ? chapter.topics.length : 0;
     const videoCount = Array.isArray(chapter?.videos) ? chapter.videos.length : 0;
-    return sum + topicCount + videoCount;
+    return sum + videoCount;
   }, 0);
 };
 
@@ -100,9 +100,31 @@ export const getStudentEnrolledCourses = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const courses = (user.enrolledCourses || [])
-      .map((course) => normalizeCourseLessonCount(course.toObject ? course.toObject() : course))
-      .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    const completedMap = (user.videoProgress || [])
+      .filter((entry) => entry.completed && entry.course)
+      .reduce((map, entry) => {
+        const courseKey = String(entry.course);
+        const videoKey = String(entry.video);
+        if (!map[courseKey]) map[courseKey] = new Set();
+        map[courseKey].add(videoKey);
+        return map;
+      }, {});
+
+    let courses = await Promise.all((user.enrolledCourses || []).map(async (course) => {
+      const normalizedCourse = normalizeCourseLessonCount(course.toObject ? course.toObject() : course);
+      const completedLessons = completedMap[String(normalizedCourse._id)] ? completedMap[String(normalizedCourse._id)].size : 0;
+      const totalLessons = await Video.countDocuments({ course: normalizedCourse._id, isPublished: true });
+      const progress = totalLessons ? Math.round((completedLessons / Math.max(1, totalLessons)) * 100) : 0;
+
+      return {
+        ...normalizedCourse,
+        completedLessons,
+        totalLessons,
+        progress,
+      };
+    }));
+
+    courses = courses.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
 
     res.json({ success: true, courses });
   } catch (err) {
@@ -311,7 +333,16 @@ export const approveCourse = async (req, res, next) => {
 export const getMyCourses = async (req, res, next) => {
   try {
     const courses = await Course.find({ teacher: req.user._id, isApproved: true }).sort({ createdAt: -1 });
-    res.json({ success: true, courses });
+
+    const coursesWithCount = await Promise.all(courses.map(async (course) => {
+      const actualLessons = await Video.countDocuments({ course: course._id, isPublished: true });
+      return {
+        ...course.toObject ? course.toObject() : course,
+        totalLessons: actualLessons,
+      };
+    }));
+
+    res.json({ success: true, courses: coursesWithCount });
   } catch (err) {
     next(err);
   }

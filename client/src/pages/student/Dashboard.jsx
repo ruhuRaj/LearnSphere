@@ -450,7 +450,38 @@ function Lectures({ courses, videosByCourse = {} }) {
   const [selCourse, setSelCourse] = useState(courses[0] || null);
   const [selTopic, setSelTopic] = useState('');
   const [playing, setPlaying] = useState(null);
+  const [progressSent, setProgressSent] = useState(false);
+  const [videoWatchedSeconds, setVideoWatchedSeconds] = useState(0);
   const videoRef = useState(null)[0];
+
+  const normalizeTime = (value) => {
+    const num = Number(value);
+    return Number.isFinite(num) && num >= 0 ? num : 0;
+  };
+
+  const sendVideoProgress = async (watchedSeconds, totalSeconds) => {
+    if (!playing) return;
+    const videoId = playing._id || playing.id;
+    if (!videoId || progressSent) return;
+
+    try {
+      await api.put(`/videos/${videoId}/progress`, {
+        watchedSeconds: normalizeTime(watchedSeconds),
+        totalSeconds: normalizeTime(totalSeconds),
+      });
+      setProgressSent(true);
+      setPlaying((prev) => prev ? { ...prev, watched: true } : prev);
+    } catch (err) {
+      console.error('Failed to save lecture progress:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (playing) {
+      setProgressSent(false);
+      setVideoWatchedSeconds(0);
+    }
+  }, [playing]);
 
   useEffect(() => {
     if (courses[0]) {
@@ -475,6 +506,7 @@ function Lectures({ courses, videosByCourse = {} }) {
   }, [topics, selTopic]);
 
   const currentUrl = playing?.url || '';
+  const videoDuration = normalizeTime(playing?.duration || 0);
   const youtubeIdMatch = currentUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
   const isYoutubeUrl = Boolean(youtubeIdMatch);
   const youtubeEmbedUrl = youtubeIdMatch ? `https://www.youtube.com/embed/${youtubeIdMatch[1]}` : '';
@@ -492,29 +524,87 @@ function Lectures({ courses, videosByCourse = {} }) {
           <div style={{ aspectRatio: '16/9', background: '#000', borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
             {currentUrl ? (
               isYoutubeUrl ? (
-                <iframe
-                  title={playing.title || 'Video lesson'}
-                  src={youtubeEmbedUrl}
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  style={{ display: 'block' }}
-                />
+                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                  <iframe
+                    title={playing.title || 'Video lesson'}
+                    src={youtubeEmbedUrl}
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    style={{ display: 'block' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => sendVideoProgress(videoDuration || 0, videoDuration || 0)}
+                    style={{
+                      position: 'absolute',
+                      top: 16,
+                      right: 16,
+                      zIndex: 20,
+                      padding: '10px 16px',
+                      borderRadius: 999,
+                      border: 'none',
+                      background: '#6366f1',
+                      color: '#fff',
+                      cursor: progressSent ? 'default' : 'pointer',
+                      opacity: progressSent ? 0.75 : 1,
+                    }}
+                    disabled={progressSent}
+                  >
+                    {progressSent ? 'Marked Complete' : 'Mark Complete'}
+                  </button>
+                </div>
               ) : (
-                <video
-                  key={currentUrl}
-                  src={currentUrl}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  width="100%"
-                  height="100%"
-                  style={{ display: 'block', background: '#000' }}
-                >
-                  Your browser does not support the video tag.
-                </video>
+                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                  <video
+                    key={currentUrl}
+                    ref={videoRef}
+                    src={currentUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    width="100%"
+                    height="100%"
+                    style={{ display: 'block', background: '#000' }}
+                    onTimeUpdate={(event) => {
+                      const current = Math.floor(normalizeTime(event.target.currentTime));
+                      const duration = Math.max(Math.floor(normalizeTime(event.target.duration)), videoDuration, current);
+                      setVideoWatchedSeconds(current);
+                      if (!progressSent && duration > 0 && current / duration >= 0.9) {
+                        sendVideoProgress(current, duration);
+                      }
+                    }}
+                    onEnded={(event) => {
+                      const current = Math.floor(normalizeTime(event.target.currentTime));
+                      const duration = Math.max(Math.floor(normalizeTime(event.target.duration)), videoDuration, current);
+                      sendVideoProgress(current || duration, duration);
+                    }}
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                  <button
+                    type="button"
+                    onClick={() => sendVideoProgress(videoWatchedSeconds || videoDuration || 0, videoDuration || 0)}
+                    style={{
+                      position: 'absolute',
+                      top: 16,
+                      right: 16,
+                      zIndex: 20,
+                      padding: '10px 16px',
+                      borderRadius: 999,
+                      border: 'none',
+                      background: '#6366f1',
+                      color: '#fff',
+                      cursor: progressSent ? 'default' : 'pointer',
+                      opacity: progressSent ? 0.75 : 1,
+                    }}
+                    disabled={progressSent}
+                  >
+                    {progressSent ? 'Marked Complete' : 'Mark Complete'}
+                  </button>
+                </div>
               )
             ) : (
               <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -1079,7 +1169,25 @@ export default function StudentPortal() {
           }));
         });
 
+        const coursesWithVideoCounts = enrolled.map((course) => {
+          const lessons = grouped[course._id]?.length || 0;
+          const totalLessons = lessons;
+          const completedLessons = Number(course.completedLessons || 0);
+          const progress = Math.min(
+            100,
+            Number(course.progress || 0) || Math.round((completedLessons / Math.max(1, totalLessons)) * 100)
+          );
+
+          return {
+            ...course,
+            totalLessons,
+            completedLessons,
+            progress,
+          };
+        });
+
         setVideosByCourse(grouped);
+        setCourses(coursesWithVideoCounts);
       } catch (error) {
         console.error('Failed to load student dashboard data:', error);
         setCourses([]);

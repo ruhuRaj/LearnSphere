@@ -5,6 +5,7 @@ import path from 'path';
 import {
   getTests, getTest, createTest, submitTest,
   getResults, getLeaderboard, getMyResults, getMyTests,
+  deleteTest,
 } from '../controllers/testController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -49,6 +50,7 @@ router.get('/my-results', protect, getMyResults);
 router.get('/my-tests', protect, authorize('teacher', 'admin'), getMyTests);
 router.get('/:id', getTest);
 router.post('/', protect, authorize('teacher', 'admin'), handleFileUpload, createTest);
+router.delete('/:id', protect, authorize('teacher', 'admin'), deleteTest);
 router.post('/:id/submit', protect, submitTest);
 router.get('/:id/results', protect, getResults);
 router.get('/:id/leaderboard', getLeaderboard);

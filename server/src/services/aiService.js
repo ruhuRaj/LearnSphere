@@ -28,9 +28,10 @@ const callAI = async (endpoint, data) => {
 };
 
 // Generate test questions
-export const generateTest = async ({ subject, topic, difficulty, count, examType }) => {
+export const generateTest = async ({ subject, topic, difficulty, count, examType, prompt }) => {
   return callAI('/ai/generate-test', {
-    topic,
+    topic: topic || prompt || subject || 'Topic',
+    prompt: prompt || topic || subject || 'Topic',
     difficulty,
     num_questions: count,
     category: examType || 'topic',

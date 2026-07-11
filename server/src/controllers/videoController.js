@@ -1,6 +1,7 @@
 import fs from 'fs';
 import Video from '../models/Video.js';
 import Course from '../models/Course.js';
+import User from '../models/User.js';
 import { Comment } from '../models/Other.js';
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -126,15 +127,77 @@ export const deleteVideo = async (req, res, next) => {
 // @route   PUT /api/videos/:id/progress
 export const updateProgress = async (req, res, next) => {
   try {
-    const { watchedSeconds, totalSeconds } = req.body;
-    const user = req.user;
-    // Award XP for watching
-    if (watchedSeconds > 60) {
-      user.xp += 5;
-      user.lastActive = new Date();
-      await user.save();
+    const { watchedSeconds = 0, totalSeconds = 0 } = req.body;
+    const video = await Video.findById(req.params.id);
+    if (!video) return res.status(404).json({ success: false, message: 'Video not found' });
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const courseId = video.course;
+    const normalizedTotal = Number(totalSeconds) || Number(video.duration) || 0;
+    const normalizedWatched = Math.min(Number(watchedSeconds) || 0, normalizedTotal || Number(watchedSeconds) || 0);
+    const completionThreshold = normalizedTotal > 0 ? normalizedWatched / normalizedTotal >= 0.9 : normalizedWatched >= 30;
+    const completed = Boolean(completionThreshold);
+
+    // Deduplicate progress entries for the same video and merge any existing state.
+    const mergedProgress = {};
+    user.videoProgress.forEach((entry) => {
+      const key = String(entry.video);
+      if (!mergedProgress[key]) {
+        mergedProgress[key] = { ...entry };
+      } else {
+        mergedProgress[key].watchedSeconds = Math.max(mergedProgress[key].watchedSeconds || 0, entry.watchedSeconds || 0);
+        mergedProgress[key].totalSeconds = Math.max(mergedProgress[key].totalSeconds || 0, entry.totalSeconds || 0);
+        mergedProgress[key].completed = mergedProgress[key].completed || entry.completed;
+        mergedProgress[key].updatedAt = mergedProgress[key].updatedAt > entry.updatedAt ? mergedProgress[key].updatedAt : entry.updatedAt;
+      }
+    });
+    user.videoProgress = Object.values(mergedProgress);
+
+    const progressIndex = user.videoProgress.findIndex((entry) => String(entry.video) === String(video._id));
+    let xpEarned = 0;
+    if (progressIndex >= 0) {
+      const existing = user.videoProgress[progressIndex];
+      const wasCompleted = Boolean(existing.completed);
+      existing.watchedSeconds = Math.max(existing.watchedSeconds, normalizedWatched);
+      existing.totalSeconds = normalizedTotal || existing.totalSeconds;
+      existing.completed = existing.completed || completed;
+      existing.updatedAt = new Date();
+      if (!wasCompleted && existing.completed) {
+        xpEarned += 10;
+      }
+    } else {
+      user.videoProgress.push({
+        video: video._id,
+        course: courseId,
+        watchedSeconds: normalizedWatched,
+        totalSeconds: normalizedTotal,
+        completed,
+        updatedAt: new Date(),
+      });
+      if (completed) xpEarned += 10;
     }
-    res.json({ success: true, message: 'Progress updated', xpEarned: watchedSeconds > 60 ? 5 : 0 });
+
+    if (xpEarned > 0) {
+      user.xp += xpEarned;
+      user.lastActive = new Date();
+    }
+
+    await user.save();
+
+    const completedLessons = user.videoProgress.filter(
+      (entry) => entry.completed && String(entry.course) === String(courseId)
+    ).length;
+    const totalLessons = await Video.countDocuments({ course: courseId, isPublished: true });
+
+    res.json({
+      success: true,
+      completed: Boolean(completed),
+      completedLessons,
+      totalLessons,
+      xpEarned,
+    });
   } catch (error) {
     next(error);
   }

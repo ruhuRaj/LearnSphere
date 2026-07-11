@@ -19,6 +19,14 @@ const userSchema = new mongoose.Schema({
   // Student specific
   targetExam: { type: String, enum: ['JEE', 'NEET', 'CBSE11', 'CBSE12', 'Bihar', 'Jharkhand', 'Bengal', ''] },
   enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
+  videoProgress: [{
+    video: { type: mongoose.Schema.Types.ObjectId, ref: 'Video' },
+    course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
+    watchedSeconds: { type: Number, default: 0 },
+    totalSeconds: { type: Number, default: 0 },
+    completed: { type: Boolean, default: false },
+    updatedAt: { type: Date, default: Date.now },
+  }],
 
   // Gamification
   xp: { type: Number, default: 0 },

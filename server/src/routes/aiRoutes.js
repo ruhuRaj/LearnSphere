@@ -21,18 +21,25 @@ const proxyToAI = (endpoint) => async (req, res, next) => {
 
     const { data } = await axios.post(`${AI_URL}/ai/${endpoint}`, req.body, {
       headers: forwardHeaders,
-      timeout: 30000,
+      timeout: 60000,
     });
     res.json(data);
   } catch (error) {
-    // If AI service is down, return a friendly fallback
+    console.error(`[AI_PROXY] ${endpoint} failed`, error.response?.status, error.response?.data);
+
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json({
         success: false,
         message: 'AI service is currently unavailable. Please try again later.',
       });
     }
-    next(error);
+
+    const status = error.response?.status || 502;
+    return res.status(status).json({
+      success: false,
+      message: error.response?.data?.detail || error.response?.data?.message || 'AI request failed.',
+      details: error.response?.data,
+    });
   }
 };
 

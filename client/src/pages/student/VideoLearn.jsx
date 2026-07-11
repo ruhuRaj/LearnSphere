@@ -27,6 +27,9 @@ export default function VideoLearn() {
   const [comment, setComment] = useState('');
   const [speed, setSpeed] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [progressSent, setProgressSent] = useState(false);
+  const [videoWatchedSeconds, setVideoWatchedSeconds] = useState(0);
+  const [videoMarkedCompleted, setVideoMarkedCompleted] = useState(false);
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export default function VideoLearn() {
         const nextVideos = Array.isArray(videosResponse?.data?.videos) ? videosResponse.data.videos : [];
 
         setCourse(nextCourse);
-        setVideos(nextVideos);
+        setVideos(nextVideos.map((video) => ({ ...video, completed: Boolean(video.completed) })));
         setActiveLesson(nextVideos[0] || null);
       } catch (error) {
         console.error('Failed to load course learning data:', error);
@@ -79,14 +82,11 @@ export default function VideoLearn() {
         ...video,
         id: video._id,
         durationLabel: formatDuration(video.duration),
-        completed: false,
+        completed: Boolean(video.completed),
       });
       return groups;
     }, {});
   }, [videos]);
-
-  const currentLesson = activeLesson || videos[0] || null;
-  const currentUrl = currentLesson?.url || '';
 
   const getVideoType = (url) => {
     if (!url) return null;
@@ -100,6 +100,74 @@ export default function VideoLearn() {
   const isYoutubeUrl = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/.test(currentUrl);
   const youtubeIdMatch = currentUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
   const youtubeEmbedUrl = youtubeIdMatch ? `https://www.youtube.com/embed/${youtubeIdMatch[1]}` : '';
+
+  const normalizeTime = (value) => {
+    const num = Number(value);
+    return Number.isFinite(num) && num >= 0 ? num : 0;
+  };
+
+  const normalizeDuration = (durationValue, fallback = 0) => {
+    const duration = normalizeTime(durationValue);
+    if (duration > 0) return duration;
+    return normalizeTime(fallback);
+  };
+
+  const getMeasuredDuration = (eventDuration) => {
+    const measured = normalizeDuration(eventDuration, currentLesson?.duration);
+    return measured > 0 ? measured : normalizeDuration(currentLesson?.duration, 0);
+  };
+
+  const getCurrentTime = (eventTime) => normalizeTime(eventTime);
+
+  const sendVideoProgress = async (watchedSeconds, totalSeconds) => {
+    if (!currentLesson?._id || progressSent) return;
+
+    const payload = {
+      watchedSeconds: Number(watchedSeconds) || 0,
+      totalSeconds: Number(totalSeconds) || 0,
+    };
+
+    try {
+      await api.put(`/videos/${currentLesson._id}/progress`, payload);
+      setProgressSent(true);
+      setVideoMarkedCompleted(true);
+      setVideos((prevVideos) => prevVideos.map((video) => (
+        String(video._id) === String(currentLesson._id)
+          ? { ...video, completed: true }
+          : video
+      )));
+      setActiveLesson((lesson) => (
+        lesson && String(lesson._id) === String(currentLesson._id)
+          ? { ...lesson, completed: true }
+          : lesson
+      ));
+    } catch (error) {
+      console.error('Failed to send video progress:', error);
+    }
+  };
+
+  const handleTimeUpdate = (event) => {
+    const current = getCurrentTime(event.target.currentTime);
+    const duration = getMeasuredDuration(event.target.duration);
+    const normalizedDuration = Math.max(duration, current);
+    setVideoWatchedSeconds(current);
+    if (normalizedDuration > 0 && !progressSent && current / normalizedDuration >= 0.9) {
+      sendVideoProgress(current, normalizedDuration);
+    }
+  };
+
+  const handleVideoEnded = (event) => {
+    const current = getCurrentTime(event.target.currentTime);
+    const duration = getMeasuredDuration(event.target.duration);
+    const normalizedDuration = Math.max(duration, current);
+    sendVideoProgress(current || normalizedDuration, normalizedDuration);
+  };
+
+  useEffect(() => {
+    setProgressSent(false);
+    setVideoWatchedSeconds(0);
+    setVideoMarkedCompleted(false);
+  }, [currentLesson?._id]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -118,28 +186,59 @@ export default function VideoLearn() {
             <div className="relative w-full" style={{ aspectRatio: '16/9', background: '#000', borderRadius: '0 0 0 0' }}>
               {currentLesson ? (
                 isYoutubeUrl ? (
-                  <iframe
-                    title={currentLesson.title || 'Video lesson'}
-                    src={youtubeEmbedUrl}
-                    className="w-full h-full"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                  <div className="relative w-full h-full">
+                    <iframe
+                      title={currentLesson.title || 'Video lesson'}
+                      src={youtubeEmbedUrl}
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                    <button
+                      type="button"
+                      onClick={() => sendVideoProgress(currentLesson.duration || 999, currentLesson.duration || 999)}
+                      className="absolute top-4 right-4 btn btn-sm btn-primary"
+                      style={{ zIndex: 30 }}
+                      disabled={progressSent}
+                    >
+                      {progressSent ? 'Marked Complete' : 'Mark Complete'}
+                    </button>
+                  </div>
                 ) : (
-                  <video
-                    key={currentUrl}
-                    ref={videoRef}
-                    src={currentUrl}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    className="w-full h-full"
-                    poster={currentLesson.thumbnail || ''}
-                    crossOrigin="anonymous"
-                  >
-                    Your browser does not support the video tag.
-                  </video>
+                  <div className="relative w-full h-full">
+                    <video
+                      key={currentUrl}
+                      ref={videoRef}
+                      src={currentUrl}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full"
+                      poster={currentLesson.thumbnail || ''}
+                      crossOrigin="anonymous"
+                      onTimeUpdate={handleTimeUpdate}
+                      onPause={(event) => {
+                        const current = Math.floor(event.target.currentTime);
+                        const duration = Math.floor(event.target.duration || currentLesson?.duration || 0);
+                        if (!progressSent && duration > 0 && current / duration >= 0.75) {
+                          sendVideoProgress(current, duration);
+                        }
+                      }}
+                      onEnded={handleVideoEnded}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                    <button
+                      type="button"
+                      onClick={() => sendVideoProgress(videoWatchedSeconds || Math.floor(currentLesson?.duration || 0), Math.floor(currentLesson?.duration || 0))}
+                      className="absolute top-4 right-4 btn btn-sm btn-primary"
+                      style={{ zIndex: 30 }}
+                      disabled={progressSent}
+                    >
+                      {progressSent ? 'Marked Complete' : 'Mark Complete'}
+                    </button>
+                  </div>
                 )
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1e1b4b, #312e81)' }}>
@@ -153,7 +252,7 @@ export default function VideoLearn() {
                 </div>
               )}
               {/* Speed Control */}
-              <div className="absolute bottom-4 right-4 flex items-center gap-2">
+              <div className="absolute bottom-4 left-4 flex items-center gap-2">
                 <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="px-2 py-1 rounded-lg text-xs font-medium text-white" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: 'none' }}>
                   {[0.5, 0.75, 1, 1.25, 1.5, 2].map((s) => <option key={s} value={s}>{s}x</option>)}
                 </select>
@@ -259,7 +358,7 @@ export default function VideoLearn() {
                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="overflow-hidden pl-2 space-y-0.5 mt-1">
                           {lessons.map((lesson) => (
                             <button key={lesson.id} onClick={() => setActiveLesson(lesson)} className="w-full flex items-center gap-2.5 p-2 rounded-lg text-left transition-colors" style={{ background: currentLesson?._id === lesson.id ? 'rgba(99,102,241,0.1)' : 'transparent' }}>
-                              {lesson.completed ? <HiOutlineCheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--success)' }} /> : <HiOutlinePlay className="w-4 h-4 flex-shrink-0" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-tertiary)' }} />}
+                              {lesson.completed ? <HiOutlineCheckCircle className="w-4 h-4 shrink-0" style={{ color: 'var(--success)' }} /> : <HiOutlinePlay className="w-4 h-4 shrink-0" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-tertiary)' }} /> }
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs truncate" style={{ color: currentLesson?._id === lesson.id ? 'var(--primary)' : 'var(--text-secondary)' }}>{lesson.title}</p>
                                 <p className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>{lesson.durationLabel}</p>

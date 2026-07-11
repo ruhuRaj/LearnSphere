@@ -5,15 +5,21 @@ AI Router — Endpoints for test generation, doubt solving, content generation, 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
+from dotenv import load_dotenv
+import json
 import random
 import os
+import re
+import time
 import httpx
+from services.test_generator import generate_questions
 try:
     import openai
 except Exception:
     openai = None
 
 router = APIRouter()
+load_dotenv()
 
 
 def extract_gemini_text(payload) -> str:
@@ -39,28 +45,294 @@ def call_gemini(prompt: str) -> Optional[str]:
     """Call the Gemini API directly using the configured API key."""
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
+        print("[ERROR] call_gemini: No GEMINI_API_KEY or GOOGLE_API_KEY found in environment")
         return None
 
-    model_name = os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
-    candidate_models = [model_name, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"]
+    candidate_models = [
+        os.getenv("GEMINI_MODEL"),
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-2.5-mini",
+    ]
+    candidate_models = [model for model in candidate_models if model]
 
+    max_retries = 2
     for candidate_model in candidate_models:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{candidate_model}:generateContent?key={api_key}"
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 2048},
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 4096},
         }
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                response = httpx.post(url, json=payload, timeout=45)
+                response.raise_for_status()
+                data = response.json()
+                text = extract_gemini_text(data)
+                if text:
+                    return text
+                break
+            except httpx.HTTPStatusError as e:
+                status_code = e.response.status_code
+                print(f"[DEBUG] call_gemini failed for model {candidate_model} (attempt {attempt}/{max_retries}): {repr(e)}")
+                if status_code in (429, 503) and attempt < max_retries:
+                    time.sleep(2 * attempt)
+                    continue
+                break
+            except Exception as e:
+                print(f"[DEBUG] call_gemini failed for model {candidate_model} (attempt {attempt}/{max_retries}): {repr(e)}")
+                break
+
+    print("[ERROR] call_gemini: All model attempts failed or returned empty responses")
+    return None
+
+def generate_local_questions(topic: str, difficulty: str, num_questions: int, category: str = 'General'):
+    return generate_questions(topic or 'General Topic', difficulty, num_questions, category)
+
+
+def extract_json_payload(text: str):
+    """Try to recover a JSON object or array from a Gemini text response."""
+    if not text or not isinstance(text, str):
+        return None
+
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    cleaned = text
+    # Try to extract any JSON-looking substring from the response
+    json_candidates = re.findall(r"(\{[\s\S]*?\}|\[[\s\S]*?\])", cleaned)
+    for candidate in json_candidates:
         try:
-            response = httpx.post(url, json=payload, timeout=45)
-            response.raise_for_status()
-            data = response.json()
-            text = extract_gemini_text(data)
-            if text:
-                return text
+            return json.loads(candidate)
         except Exception:
             continue
 
+    # If the response includes a named JSON payload, extract it.
+    for pattern in [r"questions\s*[:=]\s*(\[[\s\S]*\])", r"payload\s*[:=]\s*(\{[\s\S]*\})"]:
+        match = re.search(pattern, cleaned, re.I)
+        if match:
+            try:
+                return json.loads(match.group(1))
+            except Exception:
+                pass
+
     return None
+
+
+def parse_plaintext_questions(text: str, topic: str, num_questions: int, difficulty: str):
+    """Parse a natural-language Gemini response into a question list when JSON extraction fails."""
+    if not text:
+        return []
+
+    questions = []
+    current_question = None
+    current_options = []
+
+    def normalize_line(line: str) -> str:
+        cleaned = line.strip()
+        cleaned = re.sub(r"^\s*[*#>\-•]+\s*", "", cleaned)
+        cleaned = re.sub(r"^\*\*(.+?)\*\*$", r"\1", cleaned)
+        cleaned = re.sub(r"^\*(.+?)\*$", r"\1", cleaned)
+        return cleaned.strip()
+
+    for raw_line in text.splitlines():
+        cleaned = normalize_line(raw_line)
+        if not cleaned:
+            continue
+
+        question_match = re.match(r"^(?:Q(?:uestion)?\s*)?(\d+)(?:[\):\.\-]|\s+)(.+)$", cleaned, re.I)
+        if question_match:
+            if current_question is not None:
+                questions.append({
+                    "text": current_question,
+                    "options": current_options or ["Option A", "Option B", "Option C", "Option D"],
+                    "correctAnswer": 0,
+                    "difficulty": difficulty or "Medium",
+                    "marks": 4,
+                    "topic": topic,
+                })
+            current_question = question_match.group(2).strip("-: ")
+            current_options = []
+            continue
+
+        if re.match(r"^\*\*\d+\.", cleaned) or re.match(r"^\d+\.", cleaned):
+            if current_question is not None:
+                questions.append({
+                    "text": current_question,
+                    "options": current_options or ["Option A", "Option B", "Option C", "Option D"],
+                    "correctAnswer": 0,
+                    "difficulty": difficulty or "Medium",
+                    "marks": 4,
+                    "topic": topic,
+                })
+            current_question = cleaned
+            current_options = []
+            continue
+
+        option_match = re.match(r"^([A-D])(?:[\).:-]|\s+)(.+)$", cleaned)
+        if option_match and current_question is not None:
+            current_options.append(option_match.group(2).strip())
+            continue
+
+        if current_question is not None and not re.match(r"^(?:A|B|C|D)\)", cleaned, re.I):
+            current_question = f"{current_question} {cleaned}".strip()
+
+    if current_question is not None:
+        questions.append({
+            "text": current_question,
+            "options": current_options or ["Option A", "Option B", "Option C", "Option D"],
+            "correctAnswer": 0,
+            "difficulty": difficulty or "Medium",
+            "marks": 4,
+            "topic": topic,
+        })
+
+    if questions:
+        return questions[:max(1, min(num_questions, len(questions)))]
+
+    return []
+
+
+def _extract_question_text(question: dict):
+    for field in ("text", "question", "question_text", "questionText", "prompt", "statement", "stem"):
+        value = question.get(field)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _normalize_options(options, correct_answer=None):
+    formatted_options = []
+    for option_index, option in enumerate(options[:4]):
+        if isinstance(option, dict):
+            option_text = (
+                option.get("text")
+                or option.get("option")
+                or option.get("choice")
+                or option.get("optionText")
+                or option.get("value")
+                or ""
+            )
+            is_correct = bool(option.get("isCorrect", False))
+            if not is_correct and isinstance(correct_answer, int):
+                is_correct = option_index == correct_answer
+            elif not is_correct and isinstance(correct_answer, str):
+                option_id = option.get("id") or option.get("optionId") or option.get("key")
+                is_correct = str(option_id) == str(correct_answer)
+            if option_text:
+                formatted_options.append({"text": option_text, "isCorrect": is_correct})
+        elif isinstance(option, str) and option.strip():
+            formatted_options.append({"text": option.strip(), "isCorrect": False})
+
+    if not formatted_options:
+        return [
+            {"text": "A. Option A", "isCorrect": False},
+            {"text": "B. Option B", "isCorrect": False},
+            {"text": "C. Option C", "isCorrect": False},
+            {"text": "D. Option D", "isCorrect": False},
+        ]
+
+    while len(formatted_options) < 4:
+        formatted_options.append({"text": f"Option {len(formatted_options) + 1}", "isCorrect": False})
+
+    return formatted_options
+
+
+def normalize_generated_test(parsed, topic: str, num_questions: int, difficulty: str):
+    """Normalize Gemini output into the app's expected mock-test schema."""
+    if isinstance(parsed, list):
+        questions = parsed
+        normalized = {
+            "title": f"AI Test: {topic}",
+            "questions": [],
+            "duration": max(10, num_questions * 3),
+            "totalMarks": max(4, num_questions * 4),
+            "isAIGenerated": True,
+        }
+    elif isinstance(parsed, dict):
+        questions = parsed.get("questions") if isinstance(parsed.get("questions"), list) else parsed.get("items")
+        if not isinstance(questions, list):
+            questions = []
+        normalized = dict(parsed)
+        normalized.setdefault("title", f"AI Test: {topic}")
+        normalized.setdefault("duration", max(10, num_questions * 3))
+        normalized.setdefault("totalMarks", max(4, num_questions * 4))
+        normalized.setdefault("isAIGenerated", True)
+    else:
+        raise ValueError("Unsupported Gemini payload")
+
+    if not isinstance(questions, list) or not questions:
+        raise ValueError("No questions were returned")
+
+    formatted_questions = []
+    for index, question in enumerate(questions, start=1):
+        if not isinstance(question, dict):
+            continue
+
+        question_text = _extract_question_text(question)
+        if not question_text:
+            continue
+
+        options = []
+        for field in ("options", "choices", "answers"):
+            if isinstance(question.get(field), list):
+                options = question.get(field)
+                break
+
+        if not options:
+            option_matches = re.findall(r"([A-D])\.\s*(.+)", question_text)
+            if option_matches:
+                options = [opt for _, opt in option_matches]
+
+        correct_answer = None
+        for field in ("correctAnswer", "correct_answer", "correct_answer_id", "correctOption", "correctOptionIndex", "answer"):
+            if field in question and question.get(field) is not None:
+                correct_answer = question.get(field)
+                break
+
+        if not options and isinstance(question.get("optionSet"), list):
+            options = question.get("optionSet")
+
+        formatted_options = _normalize_options(options, correct_answer)
+
+        if isinstance(correct_answer, str) and formatted_options:
+            for option_item in formatted_options:
+                if option_item.get("text") == correct_answer:
+                    option_item["isCorrect"] = True
+                    break
+
+        formatted_questions.append({
+            "id": index,
+            "text": question_text,
+            "type": "mcq",
+            "options": formatted_options,
+            "difficulty": question.get("difficulty") or difficulty or "Medium",
+            "marks": question.get("marks") or 4,
+            "topic": question.get("topic") or topic,
+            "explanation": question.get("explanation") or "",
+        })
+
+    if not formatted_questions:
+        raise ValueError("No valid questions were returned")
+
+    normalized["questions"] = formatted_questions
+    return normalized
+
+
+def build_generation_prompt(user_prompt: str, topic_value: str, num_questions: int, difficulty: str) -> str:
+    """Use the user-provided prompt as the primary instruction for Gemini."""
+    base_prompt = (user_prompt or topic_value or "").strip()
+    if not base_prompt:
+        return f"Generate {num_questions} multiple-choice questions on {topic_value or 'this topic'} at {difficulty} difficulty."
+
+    return (
+        f"{base_prompt}\n\nCreate exactly {num_questions} multiple-choice questions from this request. "
+        f"Difficulty: {difficulty}. Keep each question concise and complete, and return them as a numbered list with four options labeled A, B, C, and D."
+    )
 
 
 def build_fallback_response(question: str, subject: str) -> str:
@@ -108,7 +380,8 @@ def build_fallback_response(question: str, subject: str) -> str:
 # ── Schemas ──────────────────────────────────
 
 class TestGenerationRequest(BaseModel):
-    topic: str
+    topic: str = ""
+    prompt: str = ""
     difficulty: str = "Medium"
     num_questions: int = 10
     category: str = "JEE"
@@ -214,269 +487,33 @@ async def evaluate_mock_test(req: MockTestEvaluationRequest):
 
 
 @router.post("/generate-test")
-async def generate_test(req: TestGenerationRequest, debug: bool = False):
-    """Generate AI-powered test questions on a given topic."""
-    # Try OpenAI if configured, otherwise use the local generator
-    openai_key = os.getenv("OPENAI_API_KEY")
-    difficulty = (req.difficulty or "Mixed").lower()
+async def generate_test(req: TestGenerationRequest):
+    """Generate mock test questions directly from Gemini."""
+    difficulty = req.difficulty or "Medium"
     num_questions = max(1, int(req.num_questions or 10))
+    user_prompt = (req.prompt or req.topic or "").strip()
+    topic_value = user_prompt or "General topic"
 
-    def local_generate(topic, difficulty_mode, n):
-        questions = []
+    prompt = build_generation_prompt(user_prompt, topic_value, num_questions, difficulty)
 
-        def make_mcq(i, text, diff):
-            correct_idx = i % 4
-            options = [
-                {"text": f"Option A for question {i+1}", "isCorrect": correct_idx == 0},
-                {"text": f"Option B for question {i+1}", "isCorrect": correct_idx == 1},
-                {"text": f"Option C for question {i+1}", "isCorrect": correct_idx == 2},
-                {"text": f"Option D for question {i+1}", "isCorrect": correct_idx == 3},
-            ]
-            return {
-                "id": i + 1,
-                "text": text,
-                "type": "mcq",
-                "options": options,
-                "correctAnswer": str(correct_idx),
-                "difficulty": diff,
-                "topic": topic,
-                "marks": 4,
-            }
-
-        # Distribution handling
-        if difficulty_mode in ("easy", "medium", "advanced"):
-            for i in range(n):
-                qtext = f"Q{i+1}: {difficulty_mode.title()} level question about {topic}."
-                questions.append(make_mcq(i, qtext, difficulty_mode.title()))
-        else:
-            # mixed or scholarship: 40% easy, 40% medium, 20% hard
-            easy_count = max(1, int(n * 0.4))
-            med_count = max(1, int(n * 0.4))
-            hard_count = max(0, n - easy_count - med_count)
-            idx = 0
-            for i in range(easy_count):
-                questions.append(make_mcq(idx, f"Q{idx+1}: Easy question on {topic}", "Easy"))
-                idx += 1
-            for i in range(med_count):
-                questions.append(make_mcq(idx, f"Q{idx+1}: Medium question on {topic}", "Medium"))
-                idx += 1
-            for i in range(hard_count):
-                questions.append(make_mcq(idx, f"Q{idx+1}: Advanced question on {topic}", "Hard"))
-                idx += 1
-
-            # Add a few general aptitude/judgement questions to help scholarship decisions
-            general_count = min(5, max(3, int(num_questions * 0.15)))
-            general_templates = [
-                "Logical reasoning: Which option completes the series?",
-                "Numerical aptitude: Find the missing number.",
-                "Verbal ability: Choose the word most similar in meaning.",
-                "General knowledge: Which of the following is true about basic science?",
-                "Problem solving: Which step is best to start solving the problem?",
-            ]
-            for g in range(general_count):
-                if idx >= n:
-                    # append but keep unique ids
-                    qid = idx + 1
-                else:
-                    qid = idx + 1
-                questions.append(make_mcq(idx, f"Q{qid}: {general_templates[g % len(general_templates)]} {topic}", "General"))
-                idx += 1
-
-        # Trim to requested size
-        return questions[:n]
-
-    def realistic_physics_generate(topic, n):
-        # Simple deterministic physics/kinematics question generator
-        qs = []
-        import math
-        for i in range(n):
-            qid = i + 1
-            if i % 3 == 0:
-                # acceleration from rest
-                v = random.choice([10, 15, 20, 30])
-                t = random.choice([2, 3, 4, 5])
-                a = round(v / t, 2)
-                text = f"A body starts from rest and reaches {v} m/s in {t} s. What is its acceleration (m/s^2)?"
-                options = [
-                    {"text": f"{a} m/s^2", "isCorrect": True},
-                    {"text": f"{round(a*0.5,2)} m/s^2", "isCorrect": False},
-                    {"text": f"{round(a*2,2)} m/s^2", "isCorrect": False},
-                    {"text": f"{round(a+1,2)} m/s^2", "isCorrect": False},
-                ]
-                difficulty = "Easy"
-            elif i % 3 == 1:
-                # distance covered under constant acceleration
-                u = random.choice([0, 2, 3])
-                a = random.choice([2, 3, 4])
-                t = random.choice([2, 3, 4])
-                s = round(u * t + 0.5 * a * t * t, 2)
-                text = f"A particle moves with initial velocity {u} m/s and acceleration {a} m/s^2 for {t} s. What distance does it cover?"
-                options = [
-                    {"text": f"{s} m", "isCorrect": True},
-                    {"text": f"{round(s*0.5,2)} m", "isCorrect": False},
-                    {"text": f"{round(s+5,2)} m", "isCorrect": False},
-                    {"text": f"{round(s-2,2)} m", "isCorrect": False},
-                ]
-                difficulty = "Medium"
-            else:
-                # relative speed / collision simple
-                u1 = random.choice([5, 10, 12])
-                u2 = random.choice([2, 4, 6])
-                rel = abs(u1 - u2)
-                text = f"Two cars move in the same direction with speeds {u1} m/s and {u2} m/s. What is their relative speed?"
-                options = [
-                    {"text": f"{rel} m/s", "isCorrect": True},
-                    {"text": f"{u1+u2} m/s", "isCorrect": False},
-                    {"text": f"{max(u1,u2)} m/s", "isCorrect": False},
-                    {"text": f"{min(u1,u2)} m/s", "isCorrect": False},
-                ]
-                difficulty = "Easy"
-
-            qs.append({
-                "id": qid,
-                "text": text,
-                "type": "mcq",
-                "options": options,
-                "difficulty": difficulty,
-                "topic": topic,
-                "marks": 4,
-            })
-        return qs
-
-    # If OpenAI key is provided, attempt to use it for richer generation
-    ai_debug = None
-    if openai_key and openai is not None:
+    gemini_response = call_gemini(prompt)
+    if gemini_response:
         try:
-            openai.api_key = openai_key
-            model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-            # Stronger prompt with example to encourage high-quality, exam-style questions
-            # Require concrete option texts (no placeholders) and at least two numeric calculation questions when topic is quantitative.
-            prompt = (
-                f"You are an expert exam question writer. Generate {num_questions} high-quality multiple-choice questions about '{req.topic}'. "
-                "Mix difficulties according to the requested mode (Easy/Medium/Hard or mixed). Include about 40% Easy, 40% Medium, 20% Hard for mixed. "
-                "Each question must be realistic, non-trivial, and appropriate for competitive exam preparation — include calculations or specific facts where relevant. "
-                "Return ONLY valid JSON that exactly matches this schema:\n"
-                "{\n  \"title\": string,\n  \"questions\": [\n    {\n      \"id\": number,\n      \"text\": string,\n      \"type\": \"mcq\",\n      \"options\": [ { \"text\": string, \"isCorrect\": boolean } , ... 4 items ],\n      \"difficulty\": \"Easy\"|\"Medium\"|\"Hard\",\n      \"marks\": number,\n      \"topic\": string,\n      \"explanation\": string (optional)\n    }\n  ],\n  \"duration\": number,\n  \"totalMarks\": number\n}\n"
-                "Example question object:\n{ \"id\":1, \"text\":\"A 2 kg block is pushed with 4 N of force; what is acceleration?\", \"type\":\"mcq\", \"options\": [ { \"text\":\"1 m/s^2\", \"isCorrect\": true }, { \"text\":\"2 m/s^2\", \"isCorrect\": false }, { \"text\":\"0.5 m/s^2\", \"isCorrect\": false }, { \"text\":\"4 m/s^2\", \"isCorrect\": false } ], \"difficulty\":\"Easy\", \"marks\":4, \"topic\":\"Physics Mechanics\", \"explanation\":\"Use F=ma...\" }\n"
-                "\nImportant constraints:\n- Do NOT use placeholder option texts like 'Option A for question x'.\n- Provide realistic option texts (values, phrases, equations).\n- For quantitative topics include at least 2 numeric calculation questions with units and show correct numeric options.\n- Keep JSON strictly parseable (no surrounding markdown).\n"
-            )
-
-            # Use Gemini / Responses API when model indicates Gemini (newer OpenAI models use Responses)
-            content = None
-            try:
-                if "gemini" in model_name.lower():
-                    # Prefer using the installed client Responses API when available
-                    if hasattr(openai, "Responses"):
-                        resp = openai.Responses.create(
-                            model=model_name,
-                            input=prompt,
-                            max_output_tokens=1200,
-                            temperature=0.7,
-                        )
-                        # Try common response fields
-                        if hasattr(resp, "output_text") and resp.output_text:
-                            content = resp.output_text
-                        else:
-                            out = getattr(resp, "output", None)
-                            if out and len(out) > 0:
-                                parts = out[0].get("content", []) if isinstance(out[0], dict) else []
-                                if parts:
-                                    for p in parts:
-                                        if isinstance(p, dict) and p.get("type") == "output_text":
-                                            content = p.get("text")
-                                            break
-                    else:
-                        # Fallback to direct HTTP call to OpenAI Responses endpoint (helps when openai client is older)
-                        try:
-                            import requests
-                            headers = {
-                                "Authorization": f"Bearer {openai_key}",
-                                "Content-Type": "application/json",
-                            }
-                            body = {
-                                "model": model_name,
-                                "input": prompt,
-                                "max_output_tokens": 1200,
-                                "temperature": 0.7,
-                            }
-                            r = requests.post("https://api.openai.com/v1/responses", headers=headers, json=body, timeout=30)
-                            if r.status_code == 200:
-                                jr = r.json()
-                                # try output_text first
-                                if jr.get("output_text"):
-                                    content = jr.get("output_text")
-                                else:
-                                    out = jr.get("output", [])
-                                    if out and isinstance(out, list) and len(out) > 0:
-                                        parts = out[0].get("content", []) if isinstance(out[0], dict) else []
-                                        for p in parts:
-                                            if isinstance(p, dict) and p.get("type") == "output_text":
-                                                content = p.get("text")
-                                                break
-                        except Exception:
-                            content = None
+            parsed = extract_json_payload(gemini_response)
+            if parsed is None:
+                plain_questions = parse_plaintext_questions(gemini_response, user_prompt or topic_value or req.topic, num_questions, difficulty)
+                if plain_questions:
+                    parsed = {"questions": plain_questions}
                 else:
-                    # Older ChatCompletion style (for non-Gemini models)
-                    resp = openai.ChatCompletion.create(
-                        model=model_name,
-                        messages=[{"role": "user", "content": prompt}],
-                        max_tokens=1200,
-                        temperature=0.7,
-                    )
-                    content = resp.choices[0].message.content
-            except Exception:
-                content = None
+                    raise ValueError("No JSON payload found")
+            normalized = normalize_generated_test(parsed, req.topic or user_prompt or topic_value, num_questions, difficulty)
+            return {"success": True, "questions": normalized["questions"], "test": normalized}
+        except Exception as exc:
+            print(f"[WARN] Gemini response parse failed, falling back to local generation: {repr(exc)}")
 
-            # Try to parse JSON; if it fails fall back to local generator
-            import json
-            if content:
-                try:
-                    parsed = json.loads(content)
-                    # Validate parsed content: detect placeholder option texts
-                    bad_placeholder = False
-                    for q in parsed.get("questions", []) if isinstance(parsed, dict) else []:
-                        for opt in q.get("options", []):
-                            txt = opt.get("text", "") if isinstance(opt, dict) else str(opt)
-                            if isinstance(txt, str) and ("Option A for question" in txt or txt.strip().startswith("Option ")):
-                                bad_placeholder = True
-                                break
-                        if bad_placeholder:
-                            break
-                    if bad_placeholder:
-                        ai_debug = "LLM returned placeholder option texts; using deterministic fallback."
-                    else:
-                        # For quantitative topics prefer deterministic physics generator to ensure numeric correctness
-                        if req.topic and any(k in req.topic.lower() for k in ["physics", "mechanics", "kinematics", "motion", "dynamics"]):
-                            ai_debug = "Skipping LLM output for physics topic; using deterministic physics generator."
-                        else:
-                            return {"success": True, "test": parsed}
-                except Exception as e:
-                    ai_debug = f"JSON parse error: {str(e)}"
-                    # Allow fallback below
-                    pass
-        except Exception as e:
-            ai_debug = str(e)
-        except Exception:
-            # OpenAI call failed — fall back to local generator
-            pass
-
-    # Local deterministic generator — prefer realistic physics generator for quantitative topics
-    if req.topic and any(k in req.topic.lower() for k in ["physics", "mechanics", "kinematics", "motion", "dynamics"]):
-        questions = realistic_physics_generate(req.topic, num_questions)
-    else:
-        questions = local_generate(req.topic, difficulty, num_questions)
-
-    test_obj = {
-        "title": f"AI Test: {req.topic}",
-        "questions": questions,
-        "duration": num_questions * 3,
-        "totalMarks": num_questions * 4,
-        "isAIGenerated": True,
-    }
-    resp = {"success": True, "test": test_obj}
-    if debug and ai_debug:
-        resp["aiDebug"] = ai_debug
-    return resp
+    # Gemini failed or returned invalid data; fallback to local topic-aware generation
+    fallback_questions = generate_local_questions(user_prompt or topic_value or req.topic, difficulty, num_questions, req.category)
+    return {"success": True, "questions": fallback_questions["questions"], "test": fallback_questions}
 
 # ── Doubt Solving ────────────────────────────
 
