@@ -262,6 +262,15 @@ export const updateCourse = async (req, res, next) => {
         }).totalLessons,
       };
 
+      if (req.user.role !== 'admin') {
+        delete updatedCourse.isApproved;
+        delete updatedCourse.isHeld;
+      }
+
+      if (!updatedCourse.isApproved || updatedCourse.isHeld) {
+        updatedCourse.isPublished = false;
+      }
+
     course = await Course.findByIdAndUpdate(req.params.id, updatedCourse, { new: true, runValidators: true });
     res.json({ success: true, course });
   } catch (err) {
@@ -295,7 +304,7 @@ export const enrollCourse = async (req, res, next) => {
     if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
 
     const user = await User.findById(req.user._id);
-    if (user.enrolledCourses.includes(course._id)) {
+    if (user.enrolledCourses.some((courseId) => courseId.toString() === course._id.toString())) {
       return res.status(400).json({ success: false, message: 'Already enrolled' });
     }
 

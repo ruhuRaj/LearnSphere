@@ -23,8 +23,8 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
 
-    if (req.user.status === 'suspended') {
-      return res.status(403).json({ success: false, message: 'Account suspended' });
+    if (req.user.status === 'suspended' || req.user.status === 'hold') {
+      return res.status(403).json({ success: false, message: 'Account suspended or on hold' });
     }
 
     next();

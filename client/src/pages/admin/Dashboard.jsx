@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { HiOutlineUsers, HiOutlineBookOpen, HiOutlineCurrencyRupee, HiOutlineChartBar, HiOutlineTrendingUp, HiOutlineShieldCheck, HiOutlineUserGroup, HiArrowRight, HiOutlineCog } from 'react-icons/hi';
+import { HiOutlineUsers, HiOutlineBookOpen, HiOutlineCurrencyRupee, HiOutlineChartBar, HiOutlineTrendingUp, HiOutlineShieldCheck, HiOutlineUserGroup, HiArrowRight, HiOutlineCog, HiOutlineLogout } from 'react-icons/hi';
 import api from '../../services/api';
+import { logout } from '../../features/authSlice';
 
 const ROLE_COLORS = { Students: '#6366f1', Teachers: '#06b6d4', Admins: '#f59e0b' };
 const CATEGORY_COLORS = { JEE: '#6366f1', NEET: '#06b6d4', CBSE11: '#10b981', CBSE12: '#f59e0b', Bihar: '#ec4899', Jharkhand: '#8b5cf6', Bengal: '#ef4444' };
 
 export default function AdminDashboard() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [analytics, setAnalytics] = useState(null);
   const [recentUsers, setRecentUsers] = useState([]);
   const [pendingCourses, setPendingCourses] = useState([]);
@@ -82,6 +86,15 @@ export default function AdminDashboard() {
             <Link to="/admin/users" className="btn btn-secondary btn-sm"><HiOutlineUsers className="w-4 h-4" /> Users</Link>
             <Link to="/admin/courses" className="btn btn-secondary btn-sm"><HiOutlineBookOpen className="w-4 h-4" /> Courses</Link>
             <Link to="/admin/settings" className="btn btn-ghost btn-sm"><HiOutlineCog className="w-4 h-4" /></Link>
+            <button
+              onClick={() => {
+                dispatch(logout());
+                navigate('/');
+              }}
+              className="btn btn-error btn-sm"
+            >
+              <HiOutlineLogout className="w-4 h-4" /> Logout
+            </button>
           </div>
         </motion.div>
 

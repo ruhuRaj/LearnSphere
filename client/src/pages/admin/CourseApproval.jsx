@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HiOutlineSearch, HiOutlineCheckCircle, HiOutlineX, HiOutlineEye } from 'react-icons/hi';
+import { HiOutlineSearch, HiOutlineCheckCircle, HiOutlineX, HiOutlineEye, HiOutlineTrash, HiArrowLeft } from 'react-icons/hi';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -13,15 +14,16 @@ const GRADIENTS = [
 ];
 
 export default function CourseApproval() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [counts, setCounts] = useState({ total: 0, pending: 0, approved: 0 });
+  const [counts, setCounts] = useState({ total: 0, pending: 0, approved: 0, hold: 0 });
 
   useEffect(() => {
     fetchCourses();
-  }, [statusFilter]);
+  }, [statusFilter, search]);
 
   const fetchCourses = async () => {
     try {
@@ -34,8 +36,9 @@ export default function CourseApproval() {
       setCourses(data.courses || []);
       setCounts({
         total: data.total || 0,
-        pending: (data.courses || []).filter((c) => !c.isApproved).length,
+        pending: (data.courses || []).filter((c) => !c.isApproved && !c.isHeld).length,
         approved: (data.courses || []).filter((c) => c.isApproved).length,
+        hold: (data.courses || []).filter((c) => c.isHeld).length,
       });
     } catch (err) {
       toast.error('Failed to load courses');
@@ -54,6 +57,17 @@ export default function CourseApproval() {
     }
   };
 
+  const deleteCourse = async (id) => {
+    if (!window.confirm('Delete this course permanently?')) return;
+    try {
+      await api.delete(`/admin/courses/${id}`);
+      toast.success('Course deleted successfully');
+      fetchCourses();
+    } catch (err) {
+      toast.error('Failed to delete course');
+    }
+  };
+
   const filtered = courses.filter((c) => {
     if (!search) return true;
     return c.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -64,9 +78,15 @@ export default function CourseApproval() {
     <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-bold font-[Outfit] mb-1" style={{ color: 'var(--text-primary)' }}>Course Management</h1>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Review and approve course submissions</p>
-
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <button onClick={() => navigate('/admin')} className="btn btn-ghost btn-sm">
+                <HiArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold font-[Outfit] mb-1" style={{ color: 'var(--text-primary)' }}>Course Management</h1>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Review and approve course submissions</p>
+              </div>
+            </div>
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="relative flex-1">
@@ -76,11 +96,10 @@ export default function CourseApproval() {
                 placeholder="Search courses..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && fetchCourses()}
               />
             </div>
             <div className="flex gap-2">
-              {['all', 'pending', 'approved'].map((s) => (
+              {['all', 'pending', 'approved', 'hold'].map((s) => (
                 <button key={s} onClick={() => setStatusFilter(s)} className="px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all" style={{
                   background: statusFilter === s ? 'var(--primary)' : 'var(--bg-tertiary)',
                   color: statusFilter === s ? 'white' : 'var(--text-secondary)'
@@ -90,11 +109,12 @@ export default function CourseApproval() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-4 gap-3 mb-6">
             {[
               { label: 'Total', value: counts.total, color: '#6366f1' },
               { label: 'Pending', value: counts.pending, color: '#f59e0b' },
               { label: 'Approved', value: counts.approved, color: '#10b981' },
+              { label: 'Hold', value: counts.hold, color: '#f97316' },
             ].map((s) => (
               <div key={s.label} className="stat-card text-center py-3">
                 <div className="text-xl font-bold font-[Outfit]" style={{ color: s.color }}>{s.value}</div>
@@ -122,7 +142,7 @@ export default function CourseApproval() {
               {filtered.map((course, i) => (
                 <motion.div key={course._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                   <div className="glass-card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background: GRADIENTS[i % GRADIENTS.length] }}>
+                    <div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{ background: GRADIENTS[i % GRADIENTS.length] }}>
                       📚
                     </div>
                     <div className="flex-1 min-w-0">
@@ -141,21 +161,39 @@ export default function CourseApproval() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="badge text-xs capitalize" style={{
-                        background: course.isApproved ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                        color: course.isApproved ? 'var(--success)' : 'var(--accent)'
+                        background: course.isApproved ? 'rgba(16,185,129,0.1)' : course.isHeld ? 'rgba(249,115,22,0.1)' : 'rgba(245,158,11,0.1)',
+                        color: course.isApproved ? 'var(--success)' : course.isHeld ? '#f97316' : 'var(--accent)'
                       }}>
-                        {course.isApproved ? 'approved' : 'pending'}
+                        {course.isApproved ? 'approved' : course.isHeld ? 'hold' : 'pending'}
                       </span>
-                      {!course.isApproved && (
-                        <div className="flex gap-1">
-                          <button onClick={() => updateStatus(course._id, 'approved')} className="btn btn-sm" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--success)', border: 'none' }}>
-                            <HiOutlineCheckCircle className="w-4 h-4" /> Approve
-                          </button>
-                          <button onClick={() => updateStatus(course._id, 'rejected')} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--error)', border: 'none' }}>
-                            <HiOutlineX className="w-4 h-4" /> Reject
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex gap-1">
+                        {!course.isApproved && !course.isHeld && (
+                          <>
+                            <button onClick={() => updateStatus(course._id, 'approved')} className="btn btn-sm" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--success)', border: 'none' }}>
+                              <HiOutlineCheckCircle className="w-4 h-4" /> Approve
+                            </button>
+                            <button onClick={() => updateStatus(course._id, 'rejected')} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--error)', border: 'none' }}>
+                              <HiOutlineX className="w-4 h-4" /> Reject
+                            </button>
+                            <button onClick={() => updateStatus(course._id, 'hold')} className="btn btn-sm" style={{ background: 'rgba(249,115,22,0.15)', color: '#f97316', border: 'none' }}>
+                              Hold
+                            </button>
+                          </>
+                        )}
+                        {course.isHeld && (
+                          <>
+                            <button onClick={() => updateStatus(course._id, 'approved')} className="btn btn-sm" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--success)', border: 'none' }}>
+                              <HiOutlineCheckCircle className="w-4 h-4" /> Approve
+                            </button>
+                            <button onClick={() => updateStatus(course._id, 'rejected')} className="btn btn-sm" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--error)', border: 'none' }}>
+                              <HiOutlineX className="w-4 h-4" /> Reject
+                            </button>
+                          </>
+                        )}
+                        <button onClick={() => deleteCourse(course._id)} className="btn btn-sm" style={{ background: 'rgba(248,113,113,0.15)', color: 'var(--error)', border: 'none' }}>
+                          <HiOutlineTrash className="w-4 h-4" /> Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>

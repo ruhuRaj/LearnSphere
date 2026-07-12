@@ -19,13 +19,18 @@ export const publicRoutes = [
 
 // ── Student Routes ──────────────────────────
 export const studentRoutes = [
-  { path: '/student', label: 'Dashboard', page: 'student/Dashboard', icon: '📊' },
-  { path: '/student/courses', label: 'My Courses', page: 'student/MyCourses', icon: '📚' },
+  { path: '/student/dashboard', label: 'Dashboard', page: 'student/Dashboard', icon: '📊' },
+  { path: '/student/courses', label: 'My Courses', page: 'student/Dashboard', icon: '📚' },
+  { path: '/student/notes', label: 'Notes', page: 'student/Dashboard', icon: '📝' },
+  { path: '/student/lectures', label: 'Watch Lectures', page: 'student/Dashboard', icon: '🎥' },
+  { path: '/student/doubts', label: 'Ask Doubts', page: 'student/Dashboard', icon: '❓' },
+  { path: '/student/ai', label: 'AI Assistant', page: 'student/Dashboard', icon: '🤖' },
+  { path: '/student/buy-courses', label: 'Buy Courses', page: 'student/Dashboard', icon: '🛒' },
+  { path: '/student/live-classes', label: 'Live Classes', page: 'student/Dashboard', icon: '🔴' },
+  { path: '/student/mock-tests', label: 'Mock Tests', page: 'student/Dashboard', icon: '🧪' },
+  { path: '/student/teacher-tests', label: 'Teacher Tests', page: 'student/Dashboard', icon: '📋' },
   { path: '/student/learn/:courseId', label: 'Learn', page: 'student/VideoLearn', hidden: true },
-  { path: '/student/tests', label: 'Mock Tests', page: 'student/MockTests', icon: '📝' },
-  { path: '/student/ai-chat', label: 'AI Chat', page: 'student/AIChat', icon: '🤖' },
   { path: '/student/profile', label: 'Profile', page: 'student/Profile', icon: '👤' },
-  { path: '/student/live-classes', label: 'Live Classes', page: 'student/LiveClasses', icon: '🔴' },
   { path: '/student/assignments', label: 'Assignments', page: 'student/Assignments', icon: '📋' },
   { path: '/student/leaderboard', label: 'Leaderboard', page: 'student/Leaderboard', icon: '🏆' },
   { path: '/student/pyq', label: 'PYQ', page: 'student/PYQ', icon: '📄' },
@@ -34,8 +39,14 @@ export const studentRoutes = [
 
 // ── Teacher Routes ──────────────────────────
 export const teacherRoutes = [
-  { path: '/teacher', label: 'Dashboard', page: 'teacher/Dashboard', icon: '📊' },
+  { path: '/teacher/dashboard', label: 'Dashboard', page: 'teacher/Dashboard', icon: '📊' },
+  { path: '/teacher/notes', label: 'Upload Notes', page: 'teacher/Dashboard', icon: '📝' },
+  { path: '/teacher/videos', label: 'Upload Videos', page: 'teacher/Dashboard', icon: '🎥' },
+  { path: '/teacher/doubts', label: 'Reply Doubts', page: 'teacher/Dashboard', icon: '❓' },
   { path: '/teacher/create-course', label: 'Create Course', page: 'teacher/CreateCourse', icon: '➕' },
+  { path: '/teacher/tests', label: 'Create Test', page: 'teacher/Dashboard', icon: '🧪' },
+  { path: '/teacher/courses', label: 'My Courses', page: 'teacher/Dashboard', icon: '📚' },
+  { path: '/teacher/live', label: 'Go Online', page: 'teacher/Dashboard', icon: '🔴' },
   { path: '/teacher/students', label: 'Students', page: 'teacher/Students', icon: '👥' },
   { path: '/teacher/assignments', label: 'Assignments', page: 'teacher/Assignments', icon: '📋' },
 ];
@@ -80,7 +91,7 @@ export function getSidebarLinks(role) {
 export function getDashboardPath(role) {
   switch (role) {
     case 'admin': return '/admin';
-    case 'teacher': return '/teacher';
+    case 'teacher': return '/teacher/dashboard';
     case 'parent': return '/parent';
     default: return '/student';
   }

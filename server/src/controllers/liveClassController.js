@@ -11,7 +11,15 @@ export const getLiveClasses = async (req, res, next) => {
     const query = {};
     if (course) query.course = course;
     if (status) query.status = status;
-    if (req.user.role === 'teacher') query.teacher = req.user._id;
+    if (req.user.role === 'teacher') {
+      query.teacher = req.user._id;
+    } else if (req.user.role === 'student') {
+      const enrolledCourseIds = Array.isArray(req.user.enrolledCourses) ? req.user.enrolledCourses : [];
+      if (enrolledCourseIds.length === 0) {
+        return res.json({ success: true, classes: [], totalPages: 0, total: 0 });
+      }
+      query.course = { $in: enrolledCourseIds };
+    }
 
     const total = await LiveClass.countDocuments(query);
     const classes = await LiveClass.find(query)

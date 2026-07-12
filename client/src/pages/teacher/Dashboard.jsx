@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -151,6 +151,7 @@ const TestsSection = ({ teacherCourses, teacherTests, testForm, testFile, setTes
 export default function TeacherDashboard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useSelector((state) => state.auth);
   const { theme } = useSelector((state) => state.ui);
   const [dashboardData, setDashboardData] = useState({
@@ -193,6 +194,17 @@ export default function TeacherDashboard() {
   const [doubtReplyDrafts, setDoubtReplyDrafts] = useState({});
   const [replyingId, setReplyingId] = useState(null);
   const [busyReplyId, setBusyReplyId] = useState(null);
+
+  const sectionPaths = {
+    dashboard: '/teacher/dashboard',
+    notes: '/teacher/notes',
+    videos: '/teacher/videos',
+    doubts: '/teacher/doubts',
+    'create-course': '/teacher/create-course',
+    tests: '/teacher/tests',
+    courses: '/teacher/courses',
+    live: '/teacher/live',
+  };
 
   const getJitsiUrl = (liveClass) => {
     const room = liveClass?.roomId || `learn-sphere-live-${liveClass?._id || Date.now()}`;
@@ -358,6 +370,21 @@ export default function TeacherDashboard() {
       setActionBusy(false);
     }
   };
+
+  useEffect(() => {
+    const pathSegment = location.pathname.replace(/^\/teacher\/?/, '').split('/')[0] || 'dashboard';
+    const mappedSection = {
+      dashboard: 'dashboard',
+      notes: 'notes',
+      videos: 'videos',
+      doubts: 'doubts',
+      'create-course': 'create-course',
+      tests: 'tests',
+      courses: 'courses',
+      live: 'live',
+    }[pathSegment] || 'dashboard';
+    setActive(mappedSection);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (teacherCourses.length) {
@@ -556,6 +583,12 @@ export default function TeacherDashboard() {
       .map((note) => note.chapter || note.subject || 'General');
     return [...new Set(chapters)];
   }, [teacherNotes, noteHistoryCourse]);
+
+  const handleSectionChange = (sectionId) => {
+    const targetPath = sectionPaths[sectionId] || '/teacher/dashboard';
+    setActive(sectionId);
+    navigate(targetPath);
+  };
 
   const actionButtons = [
     { icon: HiOutlinePlay, label: 'Upload Video', color: '#6366f1', action: () => setActiveAction('video') },
@@ -971,7 +1004,7 @@ export default function TeacherDashboard() {
         )}
         <nav style={{ flex: 1, padding: '8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {NAV.map((item) => (
-            <button key={item.id} onClick={() => setActive(item.id)} style={{ width: '100%', padding: collapsed ? '10px 0' : '9px 12px', borderRadius: 10, border: 'none', background: active === item.id ? 'rgba(124,58,237,0.12)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 10, cursor: 'pointer', textAlign: 'left' }}>
+            <button key={item.id} onClick={() => handleSectionChange(item.id)} style={{ width: '100%', padding: collapsed ? '10px 0' : '9px 12px', borderRadius: 10, border: 'none', background: active === item.id ? 'rgba(124,58,237,0.12)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start', gap: 10, cursor: 'pointer', textAlign: 'left' }}>
               <Icon d={item.icon} size={18} color={active === item.id ? C.violet : C.textMid} />
               {!collapsed && <span style={{ fontSize: 13, fontWeight: active === item.id ? 700 : 500, color: active === item.id ? C.violet : C.textMid }}>{item.label}</span>}
             </button>
@@ -987,14 +1020,16 @@ export default function TeacherDashboard() {
       </aside>
       <main style={{ flex: 1, overflowY: 'auto', padding: '28px 28px' }}>
         <div className="max-w-7xl mx-auto">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
-            <div>
-              <p style={{ margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: 11, color: C.textDim }}>Teacher Area</p>
-              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}>Teacher <span style={{ color: 'var(--primary)' }}>Dashboard</span></h1>
-              <p style={{ margin: '6px 0 0', color: C.textMid, fontSize: 13 }}>Manage uploads, tests, doubts, and all courses from one place.</p>
+          {active === 'dashboard' && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+              <div>
+                <p style={{ margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.12em', fontSize: 11, color: C.textDim }}>Teacher Area</p>
+                <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}>Teacher <span style={{ color: 'var(--primary)' }}>Dashboard</span></h1>
+                <p style={{ margin: '6px 0 0', color: C.textMid, fontSize: 13 }}>Manage uploads, tests, doubts, and all courses from one place.</p>
+              </div>
+              <button onClick={() => handleSectionChange('live')} className="btn btn-primary btn-sm">Go Online</button>
             </div>
-            <button onClick={() => setActiveAction('live')} className="btn btn-primary btn-sm">Go Online</button>
-          </div>
+          )}
           {sectionMap[active]}
         </div>
       </main>

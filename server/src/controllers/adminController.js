@@ -25,18 +25,55 @@ export const getUsers = async (req, res) => {
   res.json({ success: true, users, total, totalPages: Math.ceil(total / limit) });
 };
 
-// @desc    Update user status/role (admin)
+// @desc    Update user status/role/approval (admin)
 // @route   PUT /api/admin/users/:id
 export const updateUser = async (req, res) => {
-  const { status, role } = req.body;
+  const { status, role, isApproved, rejected, rejectReason } = req.body;
   const updates = {};
   if (status) updates.status = status;
   if (role) updates.role = role;
+  if (isApproved !== undefined) updates.isApproved = isApproved;
+  if (rejected !== undefined) updates.rejected = rejected;
+  if (rejectReason !== undefined) updates.rejectReason = rejectReason;
 
   const user = await User.findByIdAndUpdate(req.params.id, updates, { new: true });
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
   res.json({ success: true, user });
+};
+
+// @desc    Get platform settings (admin)
+// @route   GET /api/admin/settings
+const platformSettings = {
+  siteName: 'LearnSphere',
+  siteTagline: 'AI-Powered Learning Platform',
+  maintenanceMode: false,
+  registrationOpen: true,
+  teacherAutoApprove: false,
+  maxFileSize: 50,
+  defaultLanguage: 'en',
+  enableAI: true,
+  razorpayEnabled: true,
+  stripeEnabled: false,
+  freeTrial: true,
+  freeTrialDays: 7,
+  smtpHost: 'smtp.gmail.com',
+  smtpPort: 587,
+  fromEmail: 'noreply@learnsphere.com',
+  maxStudentsPerCourse: 500,
+  enableGamification: true,
+  enableForum: true,
+};
+
+export const getSettings = async (req, res) => {
+  res.json({ success: true, settings: platformSettings });
+};
+
+// @desc    Update platform settings (admin)
+// @route   PUT /api/admin/settings
+export const updateSettings = async (req, res) => {
+  Object.assign(platformSettings, req.body);
+  res.json({ success: true, settings: platformSettings });
 };
 
 // @desc    Approve teacher (admin)
@@ -107,8 +144,14 @@ export const getCourses = async (req, res) => {
   const { search, status, category, page = 1, limit = 20 } = req.query;
   const query = {};
 
-  if (status === 'pending') query.isApproved = false;
-  else if (status === 'approved') query.isApproved = true;
+  if (status === 'pending') {
+    query.isApproved = false;
+    query.isHeld = false;
+  } else if (status === 'approved') {
+    query.isApproved = true;
+  } else if (status === 'hold') {
+    query.isHeld = true;
+  }
   if (category && category !== 'all') query.category = category;
   if (search) {
     query.$or = [
@@ -136,11 +179,27 @@ export const updateCourseStatus = async (req, res) => {
   if (status === 'approved') {
     course.isApproved = true;
     course.isPublished = true;
+    course.isHeld = false;
   } else if (status === 'rejected') {
     course.isApproved = false;
     course.isPublished = false;
+    course.isHeld = false;
+  } else if (status === 'hold') {
+    course.isApproved = false;
+    course.isPublished = false;
+    course.isHeld = true;
   }
   await course.save();
 
   res.json({ success: true, course, message: `Course ${status}` });
+};
+
+// @desc    Delete course (admin)
+// @route   DELETE /api/admin/courses/:id
+export const deleteCourseAdmin = async (req, res) => {
+  const course = await Course.findById(req.params.id);
+  if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+
+  await course.deleteOne();
+  res.json({ success: true, message: 'Course deleted' });
 };

@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiSave, FiGlobe, FiShield, FiMail, FiDatabase, FiCpu, FiDollarSign } from 'react-icons/fi';
+import { FiSave, FiGlobe, FiShield, FiMail, FiDatabase, FiCpu, FiDollarSign, FiArrowLeft } from 'react-icons/fi';
+import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 export default function PlatformSettings() {
+  const navigate = useNavigate();
   const [settings, setSettings] = useState({
     siteName: 'LearnSphere', siteTagline: 'AI-Powered Learning Platform',
     maintenanceMode: false, registrationOpen: true, teacherAutoApprove: false,
@@ -40,15 +44,40 @@ export default function PlatformSettings() {
     </div>
   );
 
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data } = await api.get('/admin/settings');
+        setSettings(data.settings || settings);
+      } catch (err) {
+        toast.error('Unable to load settings');
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const saveSettings = async () => {
+    try {
+      const { data } = await api.put('/admin/settings', settings);
+      setSettings(data.settings || settings);
+      toast.success('Settings saved successfully');
+    } catch (err) {
+      toast.error('Failed to save settings');
+    }
+  };
+
   return (
     <div className="page-container" style={{ padding: '24px', maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ marginTop: '80px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '1rem' }}>
+          <button onClick={() => navigate('/admin')} className="btn btn-ghost btn-sm">
+            <FiArrowLeft className="w-4 h-4" /> Back
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="gradient-text" style={{ fontSize: '28px', fontWeight: 800, marginBottom: '4px' }}>Platform Settings</motion.h1>
             <p style={{ color: 'var(--text-tertiary)' }}>Configure your LearnSphere platform</p>
           </div>
-          <button onClick={() => alert('Settings saved!')} style={{ padding: '10px 20px', borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button onClick={saveSettings} style={{ padding: '10px 20px', borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #a855f7)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <FiSave size={14} /> Save Changes
           </button>
         </div>

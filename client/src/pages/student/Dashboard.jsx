@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { logout } from '../../features/authSlice';
 import { toggleTheme } from '../../features/uiSlice';
@@ -233,6 +233,14 @@ const TopicTabs = ({ topics = [], selected, onSelect }) => (
   </div>
 );
 
+const getNoteFileUrl = (note = {}) => {
+  const rawValue = note?.fileUrl || note?.secure_url || note?.url || note?.cloudinaryUrl || note?.localPath || '';
+  if (!rawValue) return '';
+  if (/^https?:\/\//i.test(rawValue)) return rawValue;
+  if (rawValue.startsWith('/')) return `${window.location.origin}${rawValue}`;
+  return `/${rawValue}`;
+};
+
 /* ═══════════════════════════════════════════════════
    SECTIONS
 ═══════════════════════════════════════════════════ */
@@ -242,7 +250,9 @@ function Dashboard({ user, courses }) {
   const xp = user.xp, level = user.level;
   const xpPct = Math.min(100, (xp / (level * 500)) * 100);
   const totalLessons = courses.reduce((s, c) => s + c.totalLessons, 0);
-  const avgProgress = courses.length ? Math.round(courses.reduce((s, c) => s + c.progress, 0) / courses.length) : 0;
+  const totalCompletedLessons = courses.reduce((s, c) => s + (Number(c.completedLessons) || 0), 0);
+  const weightedAvgProgress = totalLessons ? Math.round((totalCompletedLessons / totalLessons) * 100) : 0;
+  const avgProgress = weightedAvgProgress || (courses.length ? Math.round(courses.reduce((s, c) => s + Number(c.progress || 0), 0) / courses.length) : 0);
 
   const stats = [
     { label: 'Courses', value: courses.length, color: C.violet, bg: C.violetSoft, icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
@@ -399,6 +409,8 @@ function Notes({ courses, notes = [] }) {
     });
   }, [notes, selCourse, selTopic]);
 
+  const noteFileUrl = openNote ? getNoteFileUrl(openNote) : '';
+
   return (
     <div>
       <h2 style={sectionTitle}>Notes</h2>
@@ -410,10 +422,10 @@ function Notes({ courses, notes = [] }) {
           <button onClick={() => setOpenNote(null)} style={backBtn}>← Back to notes</button>
           <h3 style={{ fontSize: 20, fontWeight: 800, color: C.text, margin: '0 0 6px', fontFamily: 'Outfit, system-ui, sans-serif' }}>{openNote.title || 'Notes'}</h3>
           <p style={{ fontSize: 11, color: C.textDim, margin: '0 0 20px' }}>{selCourse?.title} · {openNote.chapter || openNote.subject || selTopic || 'General'} · {formatDate(openNote.createdAt || openNote.date)}</p>
-          {(openNote.localPath || openNote.fileUrl) && (
+          {noteFileUrl && (
             <div style={{ marginBottom: 18 }}>
               <a
-                href={openNote.localPath || openNote.fileUrl}
+                href={noteFileUrl}
                 target="_blank"
                 rel="noreferrer"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--primary)', fontSize: 13, fontWeight: 700 }}
@@ -422,7 +434,7 @@ function Notes({ courses, notes = [] }) {
               </a>
             </div>
           )}
-          <div style={{ fontSize: 14, lineHeight: 1.85, color: C.textMid, whiteSpace: 'pre-wrap' }}>{openNote.content || openNote.description || ((openNote.localPath || openNote.fileUrl) ? 'This is a PDF note. Open it above.' : 'No summary available for this note yet.')}</div>
+          <div style={{ fontSize: 14, lineHeight: 1.85, color: C.textMid, whiteSpace: 'pre-wrap' }}>{openNote.content || openNote.description || (noteFileUrl ? 'This is a PDF note. Open it above.' : 'No summary available for this note yet.')}</div>
         </Card>
       ) : noteList.length ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
@@ -431,9 +443,9 @@ function Notes({ courses, notes = [] }) {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>{n.title || 'Untitled Note'}</p>
               </div>
-                <Tag>{(n.localPath || n.fileUrl) ? 'PDF' : (n.subject || selTopic || 'Note').split(' ')[0]}</Tag>
+                <Tag>{getNoteFileUrl(n) ? 'PDF' : (n.subject || selTopic || 'Note').split(' ')[0]}</Tag>
 
-              <p style={{ margin: '0 0 10px', fontSize: 12, color: C.textMid, lineHeight: 1.6 }}>{(n.content || n.description || ((n.localPath || n.fileUrl) ? 'PDF notes available' : 'No note preview available.')).slice(0, 100)}…</p>
+              <p style={{ margin: '0 0 10px', fontSize: 12, color: C.textMid, lineHeight: 1.6 }}>{(n.content || n.description || (getNoteFileUrl(n) ? 'PDF notes available' : 'No note preview available.')).slice(0, 100)}…</p>
               <p style={{ margin: 0, fontSize: 10, color: C.textDim }}>{formatDate(n.createdAt || n.date)}</p>
             </Card>
           ))}
@@ -1082,6 +1094,7 @@ const backBtn = { background: 'none', border: 'none', color: C.violet, fontSize:
 export default function StudentPortal() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user: authUser } = useSelector((state) => state.auth);
   const { theme } = useSelector((state) => state.ui);
   const [courses, setCourses] = useState([]);
@@ -1106,6 +1119,36 @@ export default function StudentPortal() {
     level: Number(authUser?.level || Math.max(1, Math.floor((authUser?.xp || 0) / 500) + 1)),
     streak: Number(authUser?.streak || 0),
   }), [authUser]);
+
+  const sectionPaths = {
+    dashboard: '/student/dashboard',
+    courses: '/student/courses',
+    notes: '/student/notes',
+    lectures: '/student/lectures',
+    doubts: '/student/doubts',
+    ai: '/student/ai',
+    buy: '/student/buy-courses',
+    live: '/student/live-classes',
+    mocktests: '/student/mock-tests',
+    teacherTests: '/student/teacher-tests',
+  };
+
+  useEffect(() => {
+    const pathSegment = location.pathname.replace(/^\/student\/?/, '').split('/')[0] || 'dashboard';
+    const mappedSection = {
+      dashboard: 'dashboard',
+      courses: 'courses',
+      notes: 'notes',
+      lectures: 'lectures',
+      doubts: 'doubts',
+      ai: 'ai',
+      'buy-courses': 'buy',
+      'live-classes': 'live',
+      'mock-tests': 'mocktests',
+      'teacher-tests': 'teacherTests',
+    }[pathSegment] || 'dashboard';
+    setActive(mappedSection);
+  }, [location.pathname]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1231,6 +1274,12 @@ export default function StudentPortal() {
     }
   };
 
+  const handleSectionChange = (sectionId) => {
+    const targetPath = sectionPaths[sectionId] || '/student/dashboard';
+    setActive(sectionId);
+    navigate(targetPath);
+  };
+
   const sections = {
     dashboard: <Dashboard user={user} courses={courses} />,
     courses: <MyCourses courses={courses} />,
@@ -1310,7 +1359,7 @@ export default function StudentPortal() {
           {NAV.map(item => {
             const isActive = active === item.id;
             return (
-              <button key={item.id} onClick={() => setActive(item.id)}
+              <button key={item.id} onClick={() => handleSectionChange(item.id)}
                 title={collapsed ? item.label : ''}
                 style={{
                   width: '100%', padding: collapsed ? '10px 0' : '9px 12px',

@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String },
   avatar: { type: String, default: '' },
   role: { type: String, enum: ['student', 'teacher', 'admin', 'parent'], default: 'student' },
-  status: { type: String, enum: ['active', 'suspended', 'pending'], default: 'active' },
+  status: { type: String, enum: ['active', 'suspended', 'hold', 'pending'], default: 'active' },
   language: { type: String, enum: ['en', 'hi'], default: 'en' },
 
   // Social Auth
@@ -39,6 +39,8 @@ const userSchema = new mongoose.Schema({
   bio: { type: String, maxlength: 500 },
   expertise: [String],
   isApproved: { type: Boolean, default: false },
+  rejected: { type: Boolean, default: false },
+  rejectReason: { type: String, default: '' },
 
   // Scholarship
   scholarshipDiscount: { type: Number, default: 0 },

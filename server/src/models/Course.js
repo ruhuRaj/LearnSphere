@@ -30,6 +30,7 @@ const courseSchema = new mongoose.Schema({
   // Status
   isPublished: { type: Boolean, default: false },
   isApproved: { type: Boolean, default: false },
+  isHeld: { type: Boolean, default: false },
   isFeatured: { type: Boolean, default: false },
 }, {
   timestamps: true,

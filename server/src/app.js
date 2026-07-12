@@ -43,7 +43,10 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Rate limiting
+// ── API Routes ──────────────────────────────
+app.use('/api/auth', authRoutes);
+
+// Rate limiting for non-auth API routes
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
   max: Number(process.env.RATE_LIMIT_MAX || 200),
@@ -53,10 +56,6 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Auth requests are intentionally not rate limited.
-
-// ── API Routes ──────────────────────────────
-app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/videos', videoRoutes);

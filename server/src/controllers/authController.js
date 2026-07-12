@@ -61,8 +61,8 @@ export const login = async (req, res) => {
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
 
-  if (user.status === 'suspended') {
-    return res.status(403).json({ success: false, message: 'Account suspended. Contact support.' });
+  if (user.status === 'suspended' || user.status === 'hold') {
+    return res.status(403).json({ success: false, message: 'Account suspended or on hold. Contact support.' });
   }
 
   // Update streak

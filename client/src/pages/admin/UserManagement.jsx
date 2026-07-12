@@ -1,23 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HiOutlineSearch, HiOutlineTrash, HiOutlineBan, HiOutlineCheckCircle, HiOutlineFilter } from 'react-icons/hi';
+import { HiOutlineSearch, HiOutlineBan, HiOutlineCheckCircle, HiArrowLeft } from 'react-icons/hi';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-const usersData = [
-  { id: 1, name: 'Rahul Kumar', email: 'rahul@test.com', role: 'student', status: 'active', joined: '2026-01-15', courses: 3 },
-  { id: 2, name: 'Dr. Anita Verma', email: 'anita@test.com', role: 'teacher', status: 'active', joined: '2025-11-20', courses: 3 },
-  { id: 3, name: 'Priya Sharma', email: 'priya@test.com', role: 'student', status: 'active', joined: '2026-02-10', courses: 2 },
-  { id: 4, name: 'Amit Singh', email: 'amit@test.com', role: 'teacher', status: 'pending', joined: '2026-05-01', courses: 0 },
-  { id: 5, name: 'Sneha Gupta', email: 'sneha@test.com', role: 'student', status: 'suspended', joined: '2026-03-22', courses: 1 },
-  { id: 6, name: 'Rajesh Kumar', email: 'rajesh@test.com', role: 'teacher', status: 'active', joined: '2025-12-05', courses: 2 },
-  { id: 7, name: 'Vikash Yadav', email: 'vikash@test.com', role: 'student', status: 'active', joined: '2026-04-18', courses: 1 },
-  { id: 8, name: 'Kavita Nair', email: 'kavita@test.com', role: 'teacher', status: 'active', joined: '2025-10-15', courses: 1 },
-];
-
 export default function UserManagement() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [users, setUsers] = useState(usersData);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const params = { limit: 20 };
+      if (roleFilter !== 'all') params.role = roleFilter;
+      if (search) params.search = search;
+      const { data } = await api.get('/admin/users', { params });
+      setUsers(data.users || []);
+    } catch (err) {
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, [search, roleFilter]);
 
   const filtered = users.filter((u) => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
@@ -25,23 +37,39 @@ export default function UserManagement() {
     return matchSearch && matchRole;
   });
 
-  const updateStatus = (id, status) => {
-    setUsers(users.map((u) => u.id === id ? { ...u, status } : u));
-    toast.success(`User ${status === 'active' ? 'activated' : status === 'suspended' ? 'suspended' : 'updated'}`);
+  const updateStatus = async (id, status) => {
+    try {
+      await api.put(`/admin/users/${id}`, { status });
+      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, status } : u)));
+      toast.success(`User ${status === 'active' ? 'activated' : status === 'suspended' ? 'suspended' : status === 'hold' ? 'put on hold' : 'updated'}`);
+    } catch (err) {
+      toast.error('Could not update user status');
+    }
   };
 
-  const approveTeacher = (id) => {
-    setUsers(users.map((u) => u.id === id ? { ...u, status: 'active' } : u));
-    toast.success('Teacher approved successfully!');
+  const approveTeacher = async (id) => {
+    try {
+      await api.put(`/admin/users/${id}`, { isApproved: true, status: 'active', rejected: false });
+      setUsers((prev) => prev.map((u) => (u._id === id ? { ...u, status: 'active', isApproved: true, rejected: false } : u)));
+      toast.success('Teacher approved successfully!');
+    } catch (err) {
+      toast.error('Could not approve teacher');
+    }
   };
 
   return (
     <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="text-2xl font-bold font-[Outfit] mb-1" style={{ color: 'var(--text-primary)' }}>User Management</h1>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Manage all platform users</p>
-
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <button onClick={() => navigate('/admin')} className="btn btn-ghost btn-sm">
+                <HiArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold font-[Outfit] mb-1" style={{ color: 'var(--text-primary)' }}>User Management</h1>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Manage all platform users</p>
+              </div>
+            </div>
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3 mb-6">
             <div className="relative flex-1">
@@ -59,12 +87,13 @@ export default function UserManagement() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-5 gap-3 mb-6">
             {[
               { label: 'Total', value: users.length, color: '#6366f1' },
               { label: 'Students', value: users.filter((u) => u.role === 'student').length, color: '#06b6d4' },
               { label: 'Teachers', value: users.filter((u) => u.role === 'teacher').length, color: '#10b981' },
               { label: 'Pending', value: users.filter((u) => u.status === 'pending').length, color: '#f59e0b' },
+              { label: 'On Hold', value: users.filter((u) => u.status === 'hold').length, color: '#f97316' },
             ].map((s) => (
               <div key={s.label} className="stat-card text-center py-3">
                 <div className="text-xl font-bold font-[Outfit]" style={{ color: s.color }}>{s.value}</div>
@@ -86,7 +115,7 @@ export default function UserManagement() {
                 </thead>
                 <tbody>
                   {filtered.map((u) => (
-                    <tr key={u.id} className="transition-colors" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <tr key={u._id} className="transition-colors" style={{ borderBottom: '1px solid var(--border-color)' }}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{
@@ -103,24 +132,37 @@ export default function UserManagement() {
                         color: u.role === 'admin' ? 'var(--accent)' : u.role === 'teacher' ? 'var(--secondary)' : 'var(--primary)'
                       }}>{u.role}</span></td>
                       <td className="px-4 py-3"><span className="badge text-xs capitalize" style={{
-                        background: u.status === 'active' ? 'rgba(16,185,129,0.1)' : u.status === 'pending' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                        color: u.status === 'active' ? 'var(--success)' : u.status === 'pending' ? 'var(--accent)' : 'var(--error)'
+                        background: u.status === 'active' ? 'rgba(16,185,129,0.1)' : u.status === 'pending' ? 'rgba(245,158,11,0.1)' : u.status === 'hold' ? 'rgba(249,115,22,0.1)' : 'rgba(239,68,68,0.1)',
+                        color: u.status === 'active' ? 'var(--success)' : u.status === 'pending' ? 'var(--accent)' : u.status === 'hold' ? '#f97316' : 'var(--error)'
                       }}>{u.status}</span></td>
-                      <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{u.joined}</td>
-                      <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{u.courses}</td>
+                      <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        {Array.isArray(u.enrolledCourses) ? new Set(u.enrolledCourses.map((course) => String(course))).size : '—'}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           {u.status === 'pending' && (
-                            <button onClick={() => approveTeacher(u.id)} className="btn-icon btn-ghost rounded-lg" style={{ color: 'var(--success)', width: '2rem', height: '2rem' }} title="Approve">
+                            <button onClick={() => approveTeacher(u._id)} className="btn-icon btn-ghost rounded-lg" style={{ color: 'var(--success)', width: '2rem', height: '2rem' }} title="Approve">
                               <HiOutlineCheckCircle className="w-4 h-4" />
                             </button>
                           )}
-                          {u.status === 'active' ? (
-                            <button onClick={() => updateStatus(u.id, 'suspended')} className="btn-icon btn-ghost rounded-lg" style={{ color: 'var(--accent)', width: '2rem', height: '2rem' }} title="Suspend">
-                              <HiOutlineBan className="w-4 h-4" />
+                          {u.status === 'active' && (
+                            <>
+                              <button onClick={() => updateStatus(u._id, 'suspended')} className="btn-icon btn-ghost rounded-lg" style={{ color: 'var(--accent)', width: '2rem', height: '2rem' }} title="Suspend">
+                                <HiOutlineBan className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => updateStatus(u._id, 'hold')} className="btn-icon btn-ghost rounded-lg" style={{ color: '#f59e0b', width: '2rem', height: '2rem' }} title="Put on hold">
+                                <HiOutlineBan className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {u.status === 'suspended' && (
+                            <button onClick={() => updateStatus(u._id, 'active')} className="btn-icon btn-ghost rounded-lg" style={{ color: 'var(--success)', width: '2rem', height: '2rem' }} title="Activate">
+                              <HiOutlineCheckCircle className="w-4 h-4" />
                             </button>
-                          ) : u.status === 'suspended' && (
-                            <button onClick={() => updateStatus(u.id, 'active')} className="btn-icon btn-ghost rounded-lg" style={{ color: 'var(--success)', width: '2rem', height: '2rem' }} title="Activate">
+                          )}
+                          {u.status === 'hold' && (
+                            <button onClick={() => updateStatus(u._id, 'active')} className="btn-icon btn-ghost rounded-lg" style={{ color: 'var(--success)', width: '2rem', height: '2rem' }} title="Activate">
                               <HiOutlineCheckCircle className="w-4 h-4" />
                             </button>
                           )}

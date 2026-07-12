@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiCheck, FiX, FiUser, FiMail, FiBookOpen, FiClock, FiSearch } from 'react-icons/fi';
+import { FiCheck, FiX, FiUser, FiMail, FiBookOpen, FiClock, FiSearch, FiArrowLeft } from 'react-icons/fi';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 export default function TeacherApproval() {
+  const navigate = useNavigate();
   const [teachers, setTeachers] = useState([]);
   const [filter, setFilter] = useState('pending');
   const [search, setSearch] = useState('');
@@ -12,26 +15,21 @@ export default function TeacherApproval() {
 
   const fetchTeachers = async () => {
     try {
-      const { data } = await api.get('/admin/users?role=teacher');
+      const { data } = await api.get('/admin/users', { params: { role: 'teacher', limit: 20 } });
       setTeachers(data.users || []);
-    } catch {
-      // Demo data
-      setTeachers([
-        { _id: '1', name: 'Dr. Sanjay Mishra', email: 'sanjay@mail.com', specialization: ['Physics', 'JEE'], bio: 'IIT Kharagpur alumnus with 10 years of teaching experience in JEE Physics.', qualifications: 'Ph.D. Physics, IIT Kharagpur', isApproved: false, createdAt: new Date(Date.now() - 86400000).toISOString() },
-        { _id: '2', name: 'Prof. Neha Agarwal', email: 'neha@mail.com', specialization: ['Chemistry', 'NEET'], bio: 'AIIMS graduate, specializes in Organic Chemistry for NEET preparation.', qualifications: 'M.Sc. Chemistry, AIIMS', isApproved: false, createdAt: new Date(Date.now() - 172800000).toISOString() },
-        { _id: '3', name: 'Dr. Rajesh Sharma', email: 'rajesh@mail.com', specialization: ['Physics'], bio: 'IIT Delhi alumnus, 15+ years teaching JEE Physics', qualifications: 'Ph.D. Physics, IIT Delhi', isApproved: true, createdAt: new Date(Date.now() - 604800000).toISOString() },
-        { _id: '4', name: 'Prof. Meera Gupta', email: 'meera@mail.com', specialization: ['Biology', 'Chemistry'], bio: 'AIIMS topper, expert in NEET Biology & Chemistry', qualifications: 'M.D., AIIMS Delhi', isApproved: true, createdAt: new Date(Date.now() - 1209600000).toISOString() },
-        { _id: '5', name: 'Rakesh Yadav', email: 'rakesh@mail.com', specialization: ['Mathematics'], bio: 'Self-taught math enthusiast.', qualifications: 'B.Sc. Mathematics', isApproved: false, rejected: true, rejectReason: 'Insufficient qualifications', createdAt: new Date(Date.now() - 259200000).toISOString() },
-      ]);
+    } catch (err) {
+      toast.error('Failed to load teacher approvals');
+      setTeachers([]);
     }
   };
 
   const handleApprove = async (id) => {
     try {
-      await api.put(`/admin/users/${id}`, { isApproved: true });
-      setTeachers(prev => prev.map(t => t._id === id ? { ...t, isApproved: true, rejected: false } : t));
+      await api.put(`/admin/users/${id}`, { isApproved: true, status: 'active', rejected: false });
+      setTeachers((prev) => prev.map((t) => (t._id === id ? { ...t, isApproved: true, rejected: false, status: 'active' } : t)));
+      toast.success('Teacher approved');
     } catch {
-      setTeachers(prev => prev.map(t => t._id === id ? { ...t, isApproved: true, rejected: false } : t));
+      toast.error('Failed to approve teacher');
     }
   };
 
@@ -39,10 +37,11 @@ export default function TeacherApproval() {
     const reason = prompt('Reason for rejection:');
     if (!reason) return;
     try {
-      await api.put(`/admin/users/${id}`, { isApproved: false, rejected: true, rejectReason: reason });
-      setTeachers(prev => prev.map(t => t._id === id ? { ...t, rejected: true, rejectReason: reason } : t));
+      await api.put(`/admin/users/${id}`, { isApproved: false, rejected: true, rejectReason: reason, status: 'suspended' });
+      setTeachers((prev) => prev.map((t) => (t._id === id ? { ...t, rejected: true, rejectReason: reason, isApproved: false, status: 'suspended' } : t)));
+      toast.success('Teacher rejected');
     } catch {
-      setTeachers(prev => prev.map(t => t._id === id ? { ...t, rejected: true, rejectReason: reason } : t));
+      toast.error('Failed to reject teacher');
     }
   };
 
@@ -57,8 +56,15 @@ export default function TeacherApproval() {
   return (
     <div className="page-container" style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
       <div style={{ marginTop: '80px' }}>
-        <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="gradient-text" style={{ fontSize: '28px', fontWeight: 800, marginBottom: '4px' }}>Teacher Approvals</motion.h1>
-        <p style={{ color: 'var(--text-tertiary)', marginBottom: '24px' }}>Review and approve teacher registration requests</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '24px' }}>
+          <button onClick={() => navigate('/admin')} className="btn btn-ghost btn-sm">
+            <FiArrowLeft className="w-4 h-4" /> Back
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="gradient-text" style={{ fontSize: '28px', fontWeight: 800, marginBottom: '4px' }}>Teacher Approvals</motion.h1>
+            <p style={{ color: 'var(--text-tertiary)' }}>Review and approve teacher registration requests</p>
+          </div>
+        </div>
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>

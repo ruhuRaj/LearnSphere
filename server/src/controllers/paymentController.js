@@ -84,7 +84,7 @@ export const verifyPayment = async (req, res, next) => {
 
     // Enroll student in course
     const user = await User.findById(payment.user);
-    if (!user.enrolledCourses.includes(payment.course)) {
+    if (!user.enrolledCourses.some((courseId) => courseId.toString() === payment.course.toString())) {
       user.enrolledCourses.push(payment.course);
       user.xp += 50;
       await user.save();
