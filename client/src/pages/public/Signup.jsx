@@ -3,11 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { registerUser, clearError } from '../../features/authSlice';
-import { HiOutlineUser, HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineAcademicCap, HiOutlinePhone } from 'react-icons/hi';
-import { FcGoogle } from 'react-icons/fc';
-import { useGoogleLogin } from '@react-oauth/google';
-import api from '../../services/api';
-import toast from 'react-hot-toast';
+import { HiOutlineUser, HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineAcademicCap, HiOutlinePhone } from 'react-icons/hi';import api from '../../services/api';import toast from 'react-hot-toast';
 
 export default function Signup() {
   const dispatch = useDispatch();
@@ -15,46 +11,63 @@ export default function Signup() {
   const { isLoading, error } = useSelector((state) => state.auth);
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '', role: 'student' });
   const [showPw, setShowPw] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        setGoogleLoading(true);
-        // Get user info from Google using the access token
-        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-        });
-        const profile = await res.json();
+  const handleSendOtp = async () => {
+    if (!form.email) {
+      toast.error('Please enter your email first');
+      return;
+    }
 
-        // Send to our backend
-        const { data } = await api.post('/auth/google', {
-          name: profile.name,
-          email: profile.email,
-          googleId: profile.sub,
-          avatar: profile.picture,
-        });
-
-        if (data.success) {
-          localStorage.setItem('token', data.token);
-          toast.success('Welcome to LearnSphere!');
-          window.location.href = data.user.role === 'teacher' ? '/teacher' : '/student';
-        }
-      } catch (err) {
-        toast.error(err.response?.data?.message || 'Google sign-in failed');
-      } finally {
-        setGoogleLoading(false);
+    try {
+      setOtpLoading(true);
+      const { data } = await api.post('/auth/send-otp', { email: form.email });
+      if (data.success) {
+        setOtpSent(true);
+        setOtpVerified(false);
+        toast.success('OTP sent to your email');
       }
-    },
-    onError: () => toast.error('Google sign-in was cancelled'),
-  });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode) {
+      toast.error('Please enter the OTP');
+      return;
+    }
+
+    try {
+      setVerifyLoading(true);
+      const { data } = await api.post('/auth/verify-otp', { email: form.email, otp: otpCode });
+      if (data.success) {
+        setOtpVerified(true);
+        toast.success('Email verified successfully');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'OTP verification failed');
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!otpVerified) {
+      toast.error('Please verify your email first');
+      return;
+    }
     if (form.password !== form.confirmPassword) { toast.error('Passwords do not match'); return; }
     if (form.password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
     dispatch(clearError());
-    const result = await dispatch(registerUser({ name: form.name, email: form.email, phone: form.phone, password: form.password, role: form.role }));
+    const result = await dispatch(registerUser({ name: form.name, email: form.email, phone: form.phone, password: form.password, role: form.role, otp: otpCode }));
     if (registerUser.fulfilled.match(result)) {
       toast.success('Account created! Welcome to LearnSphere!');
       const role = result.payload.user.role;
@@ -83,13 +96,14 @@ export default function Signup() {
         </div>
 
         <div className="glass-card p-8">
-          <button onClick={() => googleLogin()} disabled={googleLoading} className="btn btn-secondary w-full mb-5 text-sm" style={{ gap: '0.75rem' }}>
-            <FcGoogle className="w-5 h-5" /> {googleLoading ? 'Signing in...' : 'Continue with Google'}
-          </button>
+          <div className="rounded-xl border p-4 mb-5" style={{ borderColor: 'var(--border-color)', background: 'rgba(99,102,241,0.05)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Google sign-in is for existing accounts only.</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Please create your account with email first, then use Google to sign in later.</p>
+          </div>
 
           <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px" style={{ background: 'var(--border-color)' }} />
-            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>or sign up with email</span>
+            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Sign up with email</span>
             <div className="flex-1 h-px" style={{ background: 'var(--border-color)' }} />
           </div>
 
@@ -120,6 +134,27 @@ export default function Signup() {
                 <input className="input pl-10" type="email" placeholder="you@example.com" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
             </div>
+
+            <div className="mb-3">
+              {!otpSent ? (
+                <div className="flex gap-3">
+                  <button type="button" onClick={handleSendOtp} className="btn btn-secondary flex-1" disabled={otpLoading}>
+                    {otpLoading ? 'Sending OTP...' : 'Send OTP to Email'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-3 items-center">
+                  <input className="input flex-1" placeholder="Enter OTP" value={otpCode} onChange={(e) => setOtpCode(e.target.value)} />
+                  <button type="button" onClick={handleVerifyOtp} className="btn btn-primary" disabled={verifyLoading}>
+                    {verifyLoading ? 'Verifying...' : 'Verify'}
+                  </button>
+                  <button type="button" onClick={handleSendOtp} className="btn btn-ghost" disabled={otpLoading} style={{ marginLeft: 6 }}>
+                    {otpLoading ? 'Resending...' : 'Resend'}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="label">Phone</label>
               <div className="relative">
@@ -148,7 +183,7 @@ export default function Signup() {
 
             {error && <p className="text-sm text-center" style={{ color: 'var(--error)' }}>{error}</p>}
 
-            <button type="submit" className="btn btn-primary w-full btn-lg" disabled={isLoading}>
+            <button type="submit" className="btn btn-primary w-full btn-lg" disabled={isLoading || !otpVerified}>
               {isLoading ? 'Creating account...' : 'Create Account'}
             </button>
 

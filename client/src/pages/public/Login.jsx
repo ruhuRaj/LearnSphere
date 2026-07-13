@@ -93,6 +93,7 @@ export default function Login() {
           <button onClick={() => googleLogin()} disabled={googleLoading} className="btn btn-secondary w-full mb-6 text-sm" style={{ gap: '0.75rem' }}>
             <FcGoogle className="w-5 h-5" /> {googleLoading ? 'Signing in...' : 'Continue with Google'}
           </button>
+          <p className="text-xs text-center mb-6" style={{ color: 'var(--text-tertiary)' }}>Google sign-in is available for existing accounts only.</p>
 
           <div className="flex items-center gap-3 mb-6">
             <div className="flex-1 h-px" style={{ background: 'var(--border-color)' }} />

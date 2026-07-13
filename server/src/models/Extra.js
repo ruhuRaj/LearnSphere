@@ -71,5 +71,6 @@ certificateSchema.index({ certificateId: 1 });
 
 export const Scholarship = mongoose.model('Scholarship', scholarshipSchema);
 export const ScholarshipOTP = mongoose.model('ScholarshipOTP', emailOTPSchema);
+export const EmailOTP = mongoose.model('EmailOTP', emailOTPSchema);
 export const ForumThread = mongoose.model('ForumThread', forumThreadSchema);
 export const Certificate = mongoose.model('Certificate', certificateSchema);

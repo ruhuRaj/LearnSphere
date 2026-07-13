@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { register, login, getMe, updateProfile, logout, googleAuth, forgotPassword, resetPassword, uploadAvatar } from '../controllers/authController.js';
+import { register, login, getMe, updateProfile, logout, googleAuth, forgotPassword, resetPassword, uploadAvatar, sendSignupOTP, verifySignupOTP } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 
 const uploadDir = path.join(process.cwd(), 'uploads', 'avatars');
@@ -35,6 +35,8 @@ const handleAvatar = (req, res, next) => {
 const router = express.Router();
 
 router.post('/register', register);
+router.post('/send-otp', sendSignupOTP);
+router.post('/verify-otp', verifySignupOTP);
 router.post('/login', login);
 router.post('/google', googleAuth);
 router.post('/forgot-password', forgotPassword);

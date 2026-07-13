@@ -1,7 +1,9 @@
 import User from '../models/User.js';
+import { EmailOTP } from '../models/Extra.js';
 import cloudinary from 'cloudinary';
 import fs from 'fs';
 import path from 'path';
+import { sendEmail } from '../utils/emailService.js';
 
 // configure cloudinary from env
 cloudinary.v2.config({
@@ -10,20 +12,44 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
 // @desc    Register user
 // @route   POST /api/auth/register
 export const register = async (req, res) => {
-  const { name, email, password, phone, role } = req.body;
+  const { name, email, password, phone, role, otp } = req.body;
 
-  // Check existing
-  const existing = await User.findOne({ email });
+  if (!name || !email || !password || !otp) {
+    return res.status(400).json({ success: false, message: 'Name, email, password, and OTP are required' });
+  }
+
+  const normalizedEmail = String(email).toLowerCase().trim();
+
+  const existing = await User.findOne({ email: normalizedEmail });
   if (existing) {
     return res.status(400).json({ success: false, message: 'Email already registered' });
   }
 
-  // Create user
+  const verification = await EmailOTP.findOne({
+    email: normalizedEmail,
+    code: otp,
+    verified: true,
+    used: false,
+    expiresAt: { $gt: new Date() },
+  });
+
+  if (!verification) {
+    return res.status(400).json({ success: false, message: 'Email not verified. Please verify the OTP first.' });
+  }
+
+  verification.used = true;
+  await verification.save();
+
   const user = await User.create({
-    name, email, password, phone,
+    name,
+    email: normalizedEmail,
+    password,
+    phone,
     role: role === 'teacher' ? 'teacher' : 'student',
     status: role === 'teacher' ? 'pending' : 'active',
     isApproved: role !== 'teacher',
@@ -40,6 +66,75 @@ export const register = async (req, res) => {
       xp: user.xp, level: user.level, streak: user.streak,
     },
   });
+};
+
+// @desc    Send email OTP for signup verification
+// @route   POST /api/auth/send-otp
+export const sendSignupOTP = async (req, res) => {
+  const { email } = req.body;
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+
+  if (!normalizedEmail) {
+    return res.status(400).json({ success: false, message: 'Email is required' });
+  }
+
+  const existingUser = await User.findOne({ email: normalizedEmail });
+  if (existingUser) {
+    return res.status(400).json({ success: false, message: 'Email already registered' });
+  }
+
+  const code = generateOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await EmailOTP.deleteMany({ email: normalizedEmail });
+  await EmailOTP.create({ email: normalizedEmail, code, expiresAt, verified: false, used: false });
+
+  const emailResult = await sendEmail({
+    to: normalizedEmail,
+    subject: 'Verify your LearnSphere account',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border-radius: 12px; background: #0f172a; color: #fff;">
+        <h2 style="margin-bottom: 12px; color: #a78bfa;">Email Verification</h2>
+        <p>Your OTP for LearnSphere signup is:</p>
+        <div style="font-size: 32px; font-weight: 700; letter-spacing: 6px; margin: 20px 0; color: #f8fafc;">${code}</div>
+        <p>This code will expire in 10 minutes.</p>
+      </div>
+    `,
+    text: `Your LearnSphere signup OTP is ${code}. It expires in 10 minutes.`,
+  });
+
+  if (!emailResult) {
+    console.log(`📧 Signup OTP for ${normalizedEmail}: ${code}`);
+  }
+
+  res.json({ success: true, message: 'OTP sent to your email' });
+};
+
+// @desc    Verify email OTP for signup
+// @route   POST /api/auth/verify-otp
+export const verifySignupOTP = async (req, res) => {
+  const { email, otp } = req.body;
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+
+  if (!normalizedEmail || !otp) {
+    return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+  }
+
+  const record = await EmailOTP.findOne({
+    email: normalizedEmail,
+    code: otp,
+    used: false,
+    expiresAt: { $gt: new Date() },
+  });
+
+  if (!record) {
+    return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+  }
+
+  record.verified = true;
+  await record.save();
+
+  res.json({ success: true, message: 'Email verified successfully' });
 };
 
 // @desc    Login user
@@ -198,27 +293,19 @@ export const googleAuth = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Google auth data required' });
   }
 
-  let user = await User.findOne({ email });
-  if (user) {
-    // Link Google if not already linked
-    if (!user.googleId) {
-      user.googleId = googleId;
-      user.authProvider = 'google';
-      if (avatar && !user.avatar) user.avatar = avatar;
-      await user.save();
-    }
-  } else {
-    // Create new user from Google
-    user = await User.create({
-      name,
-      email,
-      googleId,
-      avatar: avatar || '',
-      authProvider: 'google',
-      role: 'student',
-      status: 'active',
-      password: `google_${googleId}_${Date.now()}`, // placeholder password
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: 'No account found for this Google email. Please create an account first, then use Google to sign in.',
     });
+  }
+
+  if (!user.googleId) {
+    user.googleId = googleId;
+    user.authProvider = 'google';
+    if (avatar && !user.avatar) user.avatar = avatar;
+    await user.save();
   }
 
   const token = user.generateToken();
