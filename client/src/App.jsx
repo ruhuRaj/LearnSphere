@@ -33,7 +33,7 @@ const Certificates = lazy(() => import('./pages/student/Certificates'));
 
 const TeacherDashboard = lazy(() => import('./pages/teacher/Dashboard'));
 const TeacherProfile = lazy(() => import('./pages/teacher/Profile'));
-const CreateCourse = lazy(() => import('./pages/teacher/CreateCourse'));
+import CreateCourse from './pages/teacher/CreateCourse';
 const TeacherStudents = lazy(() => import('./pages/teacher/Students'));
 const TeacherAssignments = lazy(() => import('./pages/teacher/Assignments'));
 

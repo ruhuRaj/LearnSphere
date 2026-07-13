@@ -42,6 +42,14 @@ const Icon = ({ d, size = 18, color = 'currentColor' }) => (
   </svg>
 );
 
+const getNoteFileUrl = (note = {}) => {
+  const rawValue = note?.fileUrl || note?.secure_url || note?.url || note?.cloudinaryUrl || note?.localPath || '';
+  if (!rawValue) return '';
+  if (/^https?:\/\//i.test(rawValue)) return rawValue;
+  if (rawValue.startsWith('/')) return `${window.location.origin}${rawValue}`;
+  return `/${rawValue}`;
+};
+
 /* Test History Component with Course Filtering */
 const TestsSection = ({ teacherCourses, teacherTests, testForm, testFile, setTestForm, setTestFile, actionBusy, testHistoryCourse, setTestHistoryCourse, loadingTests, submitAction, handleDeleteTest, deletingTestId }) => {
   const filteredTeacherTests = useMemo(() => {
@@ -722,30 +730,33 @@ export default function TeacherDashboard() {
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading your notes...</p>
             ) : filteredTeacherNotes.length ? (
               <div className="space-y-3">
-                {filteredTeacherNotes.map((note) => (
-                  <div key={note.id} className="rounded-2xl p-4" style={{ background: 'var(--bg-tertiary)' }}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{note.title || 'Untitled note'}</p>
-                        <p className="text-[10px] mt-1" style={{ color: 'var(--text-tertiary)' }}>{note.course?.title || note.course || 'Unknown course'} • {note.chapter || note.subject || 'General'}</p>
+                {filteredTeacherNotes.map((note) => {
+                  const noteFileUrl = getNoteFileUrl(note);
+                  return (
+                    <div key={note.id} className="rounded-2xl p-4" style={{ background: 'var(--bg-tertiary)' }}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{note.title || 'Untitled note'}</p>
+                          <p className="text-[10px] mt-1" style={{ color: 'var(--text-tertiary)' }}>{note.course?.title || note.course || 'Unknown course'} • {note.chapter || note.subject || 'General'}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>{new Date(note.createdAt).toLocaleDateString('en-IN')}</p>
+                          <span className="badge badge-outline text-[10px]" style={{ color: noteFileUrl ? 'var(--success)' : 'var(--primary)' }}>{noteFileUrl ? 'PDF' : 'Markdown'}</span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>{new Date(note.createdAt).toLocaleDateString('en-IN')}</p>
-                        <span className="badge badge-outline text-[10px]" style={{ color: (note.localPath || note.fileUrl) ? 'var(--success)' : 'var(--primary)' }}>{(note.localPath || note.fileUrl) ? 'PDF' : 'Markdown'}</span>
+                      <div className="flex items-center justify-between gap-3 mt-3">
+                        {noteFileUrl ? (
+                          <a href={noteFileUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open PDF</a>
+                        ) : (
+                          <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>No file attached</span>
+                        )}
+                        <button onClick={() => handleDeleteNote(note.id)} disabled={deletingNoteId === note.id} className="btn btn-error btn-sm">
+                          {deletingNoteId === note.id ? 'Deleting…' : 'Delete'}
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between gap-3 mt-3">
-                      {(note.localPath || note.fileUrl) ? (
-                        <a href={note.localPath || note.fileUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open PDF</a>
-                      ) : (
-                        <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>No file attached</span>
-                      )}
-                      <button onClick={() => handleDeleteNote(note.id)} disabled={deletingNoteId === note.id} className="btn btn-error btn-sm">
-                        {deletingNoteId === note.id ? 'Deleting…' : 'Delete'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No uploaded notes yet. Your uploaded PDFs and summaries will appear here.</p>
@@ -800,7 +811,7 @@ export default function TeacherDashboard() {
         </div>
       )) : <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No doubts available yet.</p>}
     </div>,
-    'create-course': <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Course</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Set up your next class and publish it instantly.</p><Link to="/teacher/create-course" className="btn btn-primary btn-sm">Open Course Builder</Link></div>,
+    'create-course': null,
     tests: <TestsSection teacherCourses={teacherCourses} teacherTests={teacherTests} testForm={testForm} testFile={testFile} setTestForm={setTestForm} setTestFile={setTestFile} actionBusy={actionBusy} testHistoryCourse={testHistoryCourse} setTestHistoryCourse={setTestHistoryCourse} loadingTests={loadingTests} submitAction={submitAction} handleDeleteTest={handleDeleteTest} deletingTestId={deletingTestId} />,
     courses: <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}><h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>My Courses</h2><p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>All courses created and managed by you.</p><div className="space-y-3">{teacherCourses.length ? teacherCourses.map((course) => {
       const learners = Number(course.totalStudents) || 0;

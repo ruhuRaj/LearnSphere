@@ -57,21 +57,27 @@ export const createNote = async (req, res, next) => {
     console.log('NOTE UPLOAD - req.file', req.file ? { originalname: req.file.originalname, mimetype: req.file.mimetype, path: req.file.path } : null);
 
     if (req.file) {
-      // keep local path so we can serve as a fallback if CDN delivery is blocked
-      noteData.localPath = `/uploads/notes/${path.basename(req.file.path)}`;
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        resource_type: 'raw',
-        folder: 'learn-sphere/notes',
-        use_filename: true,
-        unique_filename: false,
-        overwrite: false,
-      });
-      console.log('NOTE UPLOAD - uploadResult', uploadResult);
-      noteData.fileUrl = uploadResult.secure_url;
-      noteData.publicId = uploadResult.public_id;
-
-      // Do not remove the local copy immediately so the app can fall back to
-      // serving `/uploads/notes/...` if Cloudinary blocks delivery for this asset.
+      const tempFilePath = req.file.path;
+      try {
+        const uploadResult = await cloudinary.uploader.upload(tempFilePath, {
+          resource_type: 'raw',
+          folder: 'learn-sphere/notes',
+          use_filename: true,
+          unique_filename: false,
+          overwrite: false,
+        });
+        console.log('NOTE UPLOAD - uploadResult', uploadResult);
+        noteData.fileUrl = uploadResult.secure_url;
+        noteData.publicId = uploadResult.public_id;
+      } finally {
+        if (fs.existsSync(tempFilePath)) {
+          try {
+            fs.unlinkSync(tempFilePath);
+          } catch (cleanupError) {
+            console.warn('Failed to remove temporary note file after upload:', cleanupError.message);
+          }
+        }
+      }
     }
 
     const note = await Notes.create(noteData);

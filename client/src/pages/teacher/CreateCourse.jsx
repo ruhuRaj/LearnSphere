@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { HiOutlinePhotograph, HiOutlineBookOpen, HiOutlineCurrencyRupee, HiOutlineTag, HiOutlineSparkles, HiArrowRight, HiArrowLeft, HiOutlineCheckCircle } from 'react-icons/hi';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -79,7 +78,7 @@ export default function CreateCourse() {
   return (
     <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div>
           <h1 className="text-2xl font-bold font-[Outfit] mb-1" style={{ color: 'var(--text-primary)' }}>Create New Course</h1>
           <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Fill in the details to create your course</p>
 
@@ -103,7 +102,7 @@ export default function CreateCourse() {
 
           {/* Step 1 - Basic Info */}
           {step === 1 && (
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-8 space-y-5">
+            <div className="glass-card p-8 space-y-5">
               <div>
                 <label className="label">Course Title</label>
                 <input className="input" placeholder="e.g. Complete JEE Physics" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -163,21 +162,12 @@ export default function CreateCourse() {
                   </div>
                 )}
               </div>
-              {/* AI Content Generation */}
-              <div className="p-4 rounded-xl" style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <HiOutlineSparkles className="w-5 h-5" style={{ color: 'var(--primary)' }} />
-                  <span className="text-sm font-semibold" style={{ color: 'var(--primary)' }}>AI Content Assistant</span>
-                </div>
-                <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>Let AI generate notes, quiz questions, assignments, and summaries for your course.</p>
-                <button className="btn btn-primary btn-sm"><HiOutlineSparkles className="w-4 h-4" /> Generate with AI</button>
-              </div>
-            </motion.div>
+            </div>
           )}
 
           {/* Step 2 - Curriculum */}
           {step === 2 && (
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-8">
+            <div className="glass-card p-8">
               <h3 className="font-semibold font-[Outfit] mb-4" style={{ color: 'var(--text-primary)' }}>Course Curriculum</h3>
               <div className="space-y-4">
                 {form.chapters.map((ch, i) => (
@@ -192,12 +182,12 @@ export default function CreateCourse() {
                 ))}
               </div>
               <button onClick={addChapter} className="btn btn-secondary w-full mt-4">+ Add Chapter</button>
-            </motion.div>
+            </div>
           )}
 
           {/* Step 3 - Pricing */}
           {step === 3 && (
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card p-8 space-y-5">
+            <div className="glass-card p-8 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="label">Price (₹)</label>
@@ -228,7 +218,7 @@ export default function CreateCourse() {
                   <span>Difficulty: {form.difficulty}</span>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* Navigation */}
@@ -255,7 +245,7 @@ export default function CreateCourse() {
               </button>
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
