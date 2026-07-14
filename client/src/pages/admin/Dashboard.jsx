@@ -91,9 +91,9 @@ export default function AdminDashboard() {
                 dispatch(logout());
                 navigate('/');
               }}
-              className="btn btn-error btn-sm"
+              className="btn btn-error btn-sm text-red-500"
             >
-              <HiOutlineLogout className="w-4 h-4" /> Logout
+              <HiOutlineLogout className="w-4 h-4 bg-red" /> Logout
             </button>
           </div>
         </motion.div>
