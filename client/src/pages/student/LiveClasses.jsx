@@ -157,10 +157,10 @@ export default function LiveClasses() {
   }
 
   return (
-    <div className="page-container" style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ marginTop: '80px' }}>
+    <div className="page-container" style={{ padding: '0px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ marginTop: '1px' }}>
         <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }} className="gradient-text">Live Classes</motion.h1>
-        <p style={{ color: 'var(--text-tertiary)', marginBottom: '24px' }}>Join interactive live sessions with your teachers</p>
+        <p style={{ color: 'var(--text-tertiary)', marginBottom: '24px' }}>Join interactive live sessions with your teachers.</p>
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>

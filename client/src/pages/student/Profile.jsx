@@ -110,7 +110,7 @@ export default function Profile() {
           {/* Profile Header */}
           <div className="flex items-center justify-between mb-4">
             <button onClick={() => navigate('/student')} className="btn btn-ghost btn-sm flex items-center gap-2">
-              <HiOutlineArrowLeft className="w-4 h-4" /> Back to dashboard
+              <HiOutlineArrowLeft className="w-4 h-4" /> Back to Dashboard
             </button>
           </div>
           <div className="glass-card p-8 mb-6 relative overflow-hidden">

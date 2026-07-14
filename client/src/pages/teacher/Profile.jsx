@@ -84,7 +84,7 @@ export default function TeacherProfile() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-4">
             <button onClick={() => navigate('/teacher')} className="btn btn-ghost btn-sm flex items-center gap-2">
-              <HiOutlineArrowLeft className="w-4 h-4" /> Back to dashboard
+              <HiOutlineArrowLeft className="w-4 h-4" /> Back to Dashboard
             </button>
           </div>
           <div className="glass-card p-8 mb-6 relative overflow-hidden">

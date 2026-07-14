@@ -286,7 +286,7 @@ function Dashboard({ user, courses }) {
             <h2 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 800, color: C.text, fontFamily: 'Outfit, system-ui, sans-serif' }}>
               Hey, {user.name.split(' ')[0]}! 👋
             </h2>
-            <p style={{ margin: 0, fontSize: 13, color: C.textMid }}>{user.email} · {user.phone}</p>
+            <p style={{ margin: 0, fontSize: 13, color: C.textMid }}>Keep Learning | Keep Practicing | Keep Exploring | Stay Motivated</p>
           </div>
         </div>
         {/* XP bar */}
@@ -847,7 +847,7 @@ function AIAssistant({ courses }) {
             <Icon d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" size={17} color={C.violet} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>StudyAI</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>LearnSphere AI</p>
             <p style={{ margin: 0, fontSize: 11, color: C.emerald }}>● Always available</p>
           </div>
         </div>
@@ -930,8 +930,8 @@ function TeacherTests({ courses, teacherTests = [] }) {
 
   return (
     <div>
-      <h2 style={sectionTitle}>Teacher Tests</h2>
-      <p style={{ margin: '0 0 20px', fontSize: 13, color: C.textMid }}>View teacher-created question papers in PDF format.</p>
+      <h2 style={{...sectionTitle, marginBottom: 4 }}>Teacher Tests</h2>
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: C.textMid }}>View teacher-created question papers.</p>
       <CourseTopicPicker courses={courses} selectedCourse={selCourse} setSelectedCourse={setSelCourse} setSelectedTopic={() => {}} />
 
       {filteredTests.length ? (
