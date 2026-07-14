@@ -107,20 +107,20 @@ const Tag = ({ children, color = C.violet, bg = C.violetSoft }) => (
   }}>{children}</span>
 );
 
-const Ring = ({ pct = 0, size = 44, stroke = 3.5, color = C.violet }) => {
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={circ * (1 - Math.min(pct, 100) / 100)}
-        strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`} />
-      <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle"
-        fill={color} style={{ fontSize: size * 0.22, fontWeight: 700 }}>{Math.round(pct)}%</text>
-    </svg>
-  );
-};
+// const Ring = ({ pct = 0, size = 44, stroke = 3.5, color = C.violet }) => {
+//   const r = (size - stroke) / 2;
+//   const circ = 2 * Math.PI * r;
+//   return (
+//     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
+//       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
+//       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+//         strokeDasharray={circ} strokeDashoffset={circ * (1 - Math.min(pct, 100) / 100)}
+//         strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+//       <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle"
+//         fill={color} style={{ fontSize: size * 0.22, fontWeight: 700 }}>{Math.round(pct)}%</text>
+//     </svg>
+//   );
+// };
 
 const Avatar = ({ name, src, size = 44 }) => {
   const [imgError, setImgError] = useState(false);
@@ -275,7 +275,7 @@ function Dashboard({ user, courses }) {
           {/* avatar + xp ring */}
           <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
             <div style={{ position: 'absolute', inset: -4 }}>
-              <Ring pct={xpPct} size={80} stroke={3} color={C.violet} />
+              {/* <Ring pct={xpPct} size={80} stroke={3} color={C.violet} /> */}
             </div>
             <Avatar name={user.name} src={user.avatar} size={72} />
           </div>
@@ -329,7 +329,7 @@ function Dashboard({ user, courses }) {
                 <div style={{ height: '100%', borderRadius: 4, width: `${c.progress}%`, background: c.gradient }} />
               </div>
             </div>
-            <Ring pct={c.progress} size={46} stroke={4} color={C.violet} />
+            {/* <Ring pct={c.progress} size={46} stroke={4} color={C.violet} /> */}
           </Card>
         ))}
       </div>
