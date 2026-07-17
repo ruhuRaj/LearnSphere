@@ -9,6 +9,7 @@
    ═══════════════════════════════════════════════ */
 
 /* ── CSS Custom Properties (Design Tokens) ──── */
+@layer components {
 :root {
   /* Brand Colors */
   --primary: #6366f1;
@@ -180,6 +181,7 @@ img {
   -webkit-backdrop-filter: blur(12px) saturate(150%);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
+  /* padding: 15px; */
   box-shadow: var(--shadow-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
@@ -654,4 +656,5 @@ img {
     linear-gradient(var(--border-color) 1px, transparent 1px),
     linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
   background-size: 40px 40px;
+}
 }

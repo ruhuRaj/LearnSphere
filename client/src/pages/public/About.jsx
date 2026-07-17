@@ -28,9 +28,9 @@ const values = [
 ];
 
 const team = [
-  { name: 'Dr. Anita Verma', role: 'Founder & CEO', emoji: '👩‍💼' },
-  { name: 'Rajesh Kumar', role: 'CTO', emoji: '👨‍💻' },
-  { name: 'Priya Patel', role: 'Head of Education', emoji: '👩‍🏫' },
+  { name: 'Randhir Kumar Raj', role: 'Founder & CEO', emoji: '👩‍💼' },
+  { name: 'Prashant Kumar', role: 'CTO', emoji: '👨‍💻' },
+  { name: 'Pratyusha', role: 'Head of Education', emoji: '👩‍🏫' },
   { name: 'Amit Singh', role: 'AI Lead', emoji: '🧑‍🔬' },
 ];
 
