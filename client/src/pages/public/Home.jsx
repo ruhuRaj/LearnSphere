@@ -137,7 +137,7 @@ export default function Home() {
       {/* ═══ HERO SECTION ═══════════════════════ */}
       <section
         ref={heroRef}
-        className="relative min-h-screen flex items-center overflow-hidden"
+        className="relative min-h-screen flex items-center justify-center overflow-hidden"
         style={{ background: 'var(--bg-primary)' }}
       >
         {/* Background Effects */}
@@ -169,9 +169,9 @@ export default function Home() {
 
         <motion.div
           style={{ opacity: heroOpacity }}
-          className="section relative z-10 w-full"
+          className="section relative z-10 mx-auto max-w-4xl text-center"
         >
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="w-full">
             {/* Badge */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -197,14 +197,16 @@ export default function Home() {
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold font-[Outfit] leading-tight mb-6"
               style={{ color: 'var(--text-primary)' }}
             >
-              Learn Smarter with{' '}
-              <span className="gradient-text animate-gradient" style={{
-                backgroundImage: 'linear-gradient(135deg, #6366f1, #06b6d4, #10b981, #6366f1)',
-                backgroundSize: '300% 300%',
-              }}>
-                AI-Powered
-              </span>{' '}
-              Education
+              <span className="block">Learn Smarter with</span>
+              <span className="block">
+                <span className="gradient-text animate-gradient" style={{
+                  backgroundImage: 'linear-gradient(135deg, #6366f1, #06b6d4, #10b981, #6366f1)',
+                  backgroundSize: '300% 300%',
+                }}>
+                  AI-Powered
+                </span>{' '}
+                Education
+              </span>
             </motion.h1>
 
             {/* Subtitle */}
@@ -212,7 +214,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-lg sm:text-xl max-w-2xl mx-auto mb-8 text-balance"
+              className="text-lg sm:text-xl max-w-2xl mx-auto mb-8 text-center text-balance"
               style={{ color: 'var(--text-secondary)' }}
             >
               India's most advanced learning platform for JEE, NEET, CBSE & State Boards.
@@ -265,28 +267,26 @@ export default function Home() {
       </section>
 
       {/* ═══ STATS BAR ══════════════════════════ */}
-      <section style={{ background: 'var(--bg-secondary)' }} className="py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map((stat, i) => (
-              <FadeIn key={stat.label} delay={i * 0.1}>
-                <div className="text-center">
-                  <div className="text-3xl sm:text-4xl font-extrabold font-[Outfit] gradient-text mb-1">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                    {stat.label}
-                  </div>
+      <section style={{ background: 'var(--bg-secondary)' }} className="section py-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {stats.map((stat, i) => (
+            <FadeIn key={stat.label} delay={i * 0.1}>
+              <div className="text-center">
+                <div className="text-3xl sm:text-4xl font-extrabold font-[Outfit] gradient-text mb-1">
+                  {stat.value}
                 </div>
-              </FadeIn>
-            ))}
-          </div>
+                <div className="text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                  {stat.label}
+                </div>
+              </div>
+            </FadeIn>
+          ))}
         </div>
       </section>
 
       {/* ═══ FEATURES SECTION ═══════════════════ */}
-      <section style={{ background: 'var(--bg-secondary)' }}>
-        <div className="section">
+      <section style={{ background: 'var(--bg-secondary)' }} className="section">
+        <div className="max-w-7xl mx-auto">
           <FadeIn>
             <div className="text-center mb-16">
               <span className="badge badge-primary mb-4">Features</span>
@@ -323,8 +323,8 @@ export default function Home() {
       </section>
 
       {/* ═══ CATEGORIES SECTION ═════════════════ */}
-      <section style={{ background: 'var(--bg-primary)' }}>
-        <div className="section">
+      <section style={{ background: 'var(--bg-primary)' }} className="section">
+        <div className="max-w-7xl mx-auto">
           <FadeIn>
             <div className="text-center mb-16">
               <span className="badge badge-primary mb-4">Categories</span>
@@ -357,8 +357,8 @@ export default function Home() {
       </section>
 
       {/* ═══ HOW IT WORKS ═══════════════════════ */}
-      <section style={{ background: 'var(--bg-secondary)' }}>
-        <div className="section">
+      <section style={{ background: 'var(--bg-secondary)' }} className="section py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <FadeIn>
             <div className="text-center mb-16">
               <span className="badge badge-primary mb-4">How It Works</span>
@@ -465,9 +465,10 @@ export default function Home() {
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-8">
                   {[
-                    { score: '90%+', discount: '70% Off' },
+                    { score: '90%+', discount: '60% Off' },
                     { score: '80%+', discount: '50% Off' },
-                    { score: '70%+', discount: '30% Off' },
+                    { score: '70%+', discount: '40% Off' },
+                    { score: '0-69%', discount: '10% Off' },
                   ].map((tier) => (
                     <div key={tier.score} className="flex items-center gap-2">
                       <HiOutlineCheckCircle className="w-5 h-5 text-green-400" />

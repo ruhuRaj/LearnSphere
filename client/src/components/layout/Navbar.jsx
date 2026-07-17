@@ -64,11 +64,10 @@ export default function Navbar() {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
             ? 'glass-strong shadow-lg'
             : 'bg-transparent'
-        }`}
+          }`}
         style={{ height: 'var(--nav-height)' }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
@@ -304,3 +303,4 @@ export default function Navbar() {
     </>
   );
 }
+

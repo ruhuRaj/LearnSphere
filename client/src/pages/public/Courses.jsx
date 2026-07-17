@@ -189,7 +189,7 @@ export default function Courses() {
                       {course.rating > 0 && (
                         <span className="flex items-center gap-1"><HiOutlineStar className="w-3.5 h-3.5" style={{ color: 'var(--accent)', fill: 'var(--accent)' }} /> {course.rating.toFixed(1)}</span>
                       )}
-                      <span className="flex items-center gap-1"><HiOutlineUsers className="w-3.5 h-3.5" /> {course.totalStudents > 999 ? `${(course.totalStudents / 1000).toFixed(1)}k` : course.totalStudents}</span>
+                      {/* <span className="flex items-center gap-1"><HiOutlineUsers className="w-3.5 h-3.5" /> {course.totalStudents > 999 ? `${(course.totalStudents / 1000).toFixed(1)}k` : course.totalStudents}</span> */}
                       {(() => {
                         const lessonCount = getLessonCount(course);
                         return lessonCount > 0 ? <span className="flex items-center gap-1"><HiOutlinePlay className="w-3.5 h-3.5" /> {lessonCount} lessons</span> : null;
