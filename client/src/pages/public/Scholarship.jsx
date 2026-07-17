@@ -279,8 +279,8 @@ export default function Scholarship() {
         </div>
       </section>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-8 -mt-4">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-8 mt-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {tiers.map((t, i) => (
             <FadeIn key={t.label} delay={i * 0.08}>
               <div className="glass-card p-5 text-center">
@@ -302,7 +302,7 @@ export default function Scholarship() {
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Register yourself and take the AI-powered test, and earn a one-time coupon for course checkout.</p>
               </div>
               <button onClick={() => setStep('application')} className="btn btn-primary btn-lg">
-                Start Scholarship Test <HiArrowRight className="w-5 h-5" />
+                Start Test <HiArrowRight className="w-5 h-5" />
               </button>
             </div>
 
@@ -360,7 +360,7 @@ export default function Scholarship() {
                   <button onClick={applyForScholarship} className="btn btn-primary btn-lg" disabled={submitting || !otpVerified}>
                     {submitting ? 'Starting test…' : 'Start Scholarship Test'}
                   </button>
-                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>No login or signup is required for this scholarship form.</span>
+                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>No login or signup is required for this scholarship test. Just register yourself !!</span>
                 </div>
               </div>
             )}

@@ -136,8 +136,8 @@ export default function MockTestStudio() {
   };
 
   return (
-    <div className="page-container" style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <div className="page-container -mt-14" style={{ background: 'var(--bg-primary)', minHeight: '100%' }}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 mb-6" style={{ borderRadius: '20px' }}>
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
             <div>

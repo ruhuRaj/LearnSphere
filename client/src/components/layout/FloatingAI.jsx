@@ -79,7 +79,7 @@ export default function FloatingAI() {
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             style={{
-              position: 'fixed', bottom: '90px', right: '24px', zIndex: 1001,
+              position: 'fixed', bottom: '70px', right: '24px', zIndex: 1001,
               width: '380px', maxWidth: 'calc(100vw - 48px)', height: '500px',
               borderRadius: '16px', overflow: 'hidden',
               display: 'flex', flexDirection: 'column',

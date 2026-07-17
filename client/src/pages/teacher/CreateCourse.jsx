@@ -76,11 +76,11 @@ export default function CreateCourse() {
   const totalSteps = 3;
 
   return (
-    <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
+    <div className="page-container -mt-18" style={{ background: 'var(--bg-primary)' }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         <div>
           <h1 className="text-2xl font-bold font-[Outfit] mb-1" style={{ color: 'var(--text-primary)' }}>Create New Course</h1>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Fill in the details to create your course</p>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Fill in the details to create your course.</p>
 
           {/* Progress Steps */}
           <div className="flex items-center gap-2 mb-8">

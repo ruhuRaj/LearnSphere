@@ -47,7 +47,7 @@ export default function About() {
               Revolutionizing Education with <span className="gradient-text">AI</span>
             </h1>
             <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-              LearnSphere was founded with a simple mission: make world-class education accessible to every student in India through the power of artificial intelligence.
+              LearnSphere was founded with a simple mission: make world-class education accessible to every student in India through the power of Artificial Intelligence.
             </p>
           </FadeIn>
         </div>
@@ -83,7 +83,7 @@ export default function About() {
       <section style={{ background: 'var(--bg-primary)' }}>
         <div className="section">
           <FadeIn><h2 className="text-3xl font-bold font-[Outfit] text-center mb-12" style={{ color: 'var(--text-primary)' }}>Our Core <span className="gradient-text">Values</span></h2></FadeIn>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {values.map((v, i) => (
               <FadeIn key={v.title} delay={i * 0.08}>
                 <div className="glass-card p-6 text-center h-full">
@@ -100,7 +100,7 @@ export default function About() {
       </section>
 
       {/* Stats */}
-      <section className="gradient-primary py-16">
+      <section className="gradient-primary py-6">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[{ v: '50K+', l: 'Students' }, { v: '200+', l: 'Teachers' }, { v: '500+', l: 'Courses' }, { v: '95%', l: 'Success Rate' }].map((s) => (
             <div key={s.l}><div className="text-3xl font-extrabold text-white font-[Outfit]">{s.v}</div><div className="text-indigo-200 text-sm mt-1">{s.l}</div></div>

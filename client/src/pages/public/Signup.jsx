@@ -82,15 +82,15 @@ export default function Signup() {
       <div className="absolute inset-0 gradient-mesh" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md relative z-10">
         {/* Logo */}
-        <div className="text-center mb-6">
-          <Link to="/" className="inline-flex items-center gap-2.5 mb-3">
+        <div className="text-center mb-6 mt-6">
+          {/* <Link to="/" className="inline-flex items-center gap-2.5 mb-3">
             <div className="w-11 h-11 rounded-xl gradient-primary flex items-center justify-center shadow-lg">
               <HiOutlineAcademicCap className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold font-[Outfit]">
               <span className="gradient-text">Learn</span><span style={{ color: 'var(--text-primary)' }}>Sphere</span>
             </span>
-          </Link>
+          </Link> */}
           <h1 className="text-2xl font-bold font-[Outfit]" style={{ color: 'var(--text-primary)' }}>Create Account</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Start your learning journey today</p>
         </div>
@@ -139,7 +139,7 @@ export default function Signup() {
               {!otpSent ? (
                 <div className="flex gap-3">
                   <button type="button" onClick={handleSendOtp} className="btn btn-secondary flex-1" disabled={otpLoading}>
-                    {otpLoading ? 'Sending OTP...' : 'Send OTP to Email'}
+                    {otpLoading ? 'Sending OTP...' : 'Verify Email'}
                   </button>
                 </div>
               ) : (
@@ -193,7 +193,7 @@ export default function Signup() {
           </form>
         </div>
 
-        <p className="text-center text-sm mt-6" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-center text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
           Already have an account? <Link to="/login" className="font-semibold" style={{ color: 'var(--primary)' }}>Sign in</Link>
         </p>
       </motion.div>

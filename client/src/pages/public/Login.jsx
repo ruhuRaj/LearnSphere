@@ -76,15 +76,15 @@ export default function Login() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2.5 mb-4">
+          {/* <Link to="/" className="inline-flex items-center gap-2.5 mb-4">
             <div className="w-11 h-11 rounded-xl gradient-primary flex items-center justify-center shadow-lg">
               <HiOutlineAcademicCap className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold font-[Outfit]">
               <span className="gradient-text">Learn</span><span style={{ color: 'var(--text-primary)' }}>Sphere</span>
             </span>
-          </Link>
-          <h1 className="text-2xl font-bold font-[Outfit] mt-2" style={{ color: 'var(--text-primary)' }}>Welcome Back</h1>
+          </Link> */}
+          <h1 className="text-2xl font-bold font-[Outfit] mt-2" style={{ color: 'var(--text-primary)' }}>Hi, Welcome Back</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Sign in to continue learning</p>
         </div>
 
@@ -147,7 +147,7 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-center text-sm mt-6" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-center text-sm mt-2 mb-12" style={{ color: 'var(--text-secondary)' }}>
           Don't have an account? <Link to="/signup" className="font-semibold" style={{ color: 'var(--primary)' }}>Sign up free</Link>
         </p>
       </motion.div>

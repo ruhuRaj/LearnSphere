@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { loadUser, logout as logoutUser } from './features/authSlice';
 import Navbar from './components/layout/Navbar';
@@ -16,6 +16,7 @@ const Contact = lazy(() => import('./pages/public/Contact'));
 const Scholarship = lazy(() => import('./pages/public/Scholarship'));
 const Login = lazy(() => import('./pages/public/Login'));
 const Signup = lazy(() => import('./pages/public/Signup'));
+const ForgotPassword = lazy(() => import('./pages/public/ForgotPassword'));
 const Forum = lazy(() => import('./pages/public/Forum'));
 const Checkout = lazy(() => import('./pages/public/Checkout'));
 
@@ -72,6 +73,12 @@ export default function App() {
     };
   }, [dispatch, token]);
 
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
       {showNavbar && <Navbar />}
@@ -85,6 +92,7 @@ export default function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/scholarship" element={<Scholarship />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forum" element={<Forum />} />
           <Route path="/checkout" element={<ProtectedRoute allowedRoles={['student']}><Checkout /></ProtectedRoute>} />

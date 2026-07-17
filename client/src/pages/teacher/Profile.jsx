@@ -79,7 +79,7 @@ export default function TeacherProfile() {
   };
 
   return (
-    <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
+    <div className="page-container -mt-18" style={{ background: 'var(--bg-primary)' }}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-4">

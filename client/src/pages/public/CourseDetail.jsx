@@ -142,7 +142,7 @@ export default function CourseDetail() {
             <p className="text-indigo-100 mb-4 max-w-xl">{course.description || 'A detailed course created by the instructor with structured lessons, live support, and practice resources.'}</p>
             <div className="flex items-center gap-4 text-sm text-indigo-100 mb-6 flex-wrap">
               <span className="flex items-center gap-1"><HiOutlineStar className="w-4 h-4 text-yellow-300" /> {Number(course.rating || 0).toFixed(1)}</span>
-              <span className="flex items-center gap-1"><HiOutlineUsers className="w-4 h-4" /> {course.totalStudents || 0} students</span>
+              {/* <span className="flex items-center gap-1"><HiOutlineUsers className="w-4 h-4" /> {course.totalStudents || 0} students</span> */}
               <span className="flex items-center gap-1"><HiOutlinePlay className="w-4 h-4" /> {lessonsCount} lessons</span>
             </div>
             <p className="text-sm text-indigo-200">By <strong className="text-white">{course.teacher?.name || course.teacher || 'Expert Teacher'}</strong></p>

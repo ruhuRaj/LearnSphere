@@ -181,7 +181,6 @@ img {
   -webkit-backdrop-filter: blur(12px) saturate(150%);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  /* padding: 15px; */
   box-shadow: var(--shadow-md);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;

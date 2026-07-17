@@ -342,7 +342,7 @@ export default function Home() {
               <FadeIn key={cat.name} delay={i * 0.06}>
                 <Link
                   to={`/courses?category=${cat.name}`}
-                  className="glass-card p-5 text-center group cursor-pointer"
+                  className="glass-card p-0.5 text-center group cursor-pointer"
                 >
                   <div className="text-3xl mb-3">{cat.icon}</div>
                   <h4 className="font-semibold text-sm mb-1 font-[Outfit]" style={{ color: 'var(--text-primary)' }}>
@@ -368,7 +368,7 @@ export default function Home() {
             </div>
           </FadeIn>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-30 max-w-6xl mx-auto">
             {[
               { step: '01', title: 'Sign Up & Pick Your Goal', desc: 'Create your free account and select your target exam — JEE, NEET, CBSE, or State Board.' },
               { step: '02', title: 'Learn with AI Guidance', desc: 'Get a personalized study plan, watch video lessons, solve AI-generated tests, and clear doubts instantly.' },
@@ -406,7 +406,7 @@ export default function Home() {
             </div>
           </FadeIn>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {testimonials.map((t, i) => (
               <FadeIn key={t.name} delay={i * 0.1}>
                 <div className="glass-card p-6 h-full flex flex-col">
@@ -458,7 +458,7 @@ export default function Home() {
                   <span className="text-sm font-medium text-yellow-400">Scholarship Program</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white font-[Outfit] mb-4">
-                  Win Up to 70% Scholarship!
+                  Win Up to 60% Scholarship!
                 </h2>
                 <p className="text-indigo-200 max-w-xl mx-auto mb-8">
                   Take our AI-powered scholarship entrance test and unlock massive discounts on all premium courses.

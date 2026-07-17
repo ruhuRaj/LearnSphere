@@ -18,7 +18,7 @@ const footerSections = [
     links: [
       { name: 'Courses', path: '/courses' },
       { name: 'Scholarship Test', path: '/scholarship' },
-      { name: 'Community', path: '/community' },
+      { name: 'Community', path: '/forum' },
       { name: 'About Us', path: '/about' },
     ],
   },
@@ -56,7 +56,7 @@ const socialLinks = [
   { icon: FaTwitter, href: '#', label: 'Twitter' },
   { icon: FaInstagram, href: '#', label: 'Instagram' },
   { icon: FaYoutube, href: '#', label: 'YouTube' },
-  { icon: FaLinkedinIn, href: '#', label: 'LinkedIn' },
+  { icon: FaLinkedinIn, href: 'https://www.linkedin.com/in/randhir-kumar-raj-0528442b4/', label: 'LinkedIn' },
 ];
 
 export default function Footer() {
@@ -116,18 +116,18 @@ export default function Footer() {
             </p>
             <div className="space-y-2">
               <a
-                href="mailto:hello@learnsphere.com"
+                href="mailto:randhirrajak9431@gmail.com"
                 className="flex items-center gap-2 text-sm transition-colors"
                 style={{ color: 'var(--text-tertiary)' }}
               >
-                <HiOutlineMail className="w-4 h-4" /> hello@learnsphere.com
+                <HiOutlineMail className="w-4 h-4" /> randhirrajak9431@gmail.com
               </a>
               <a
-                href="tel:+911234567890"
+                href="tel:+916204360389"
                 className="flex items-center gap-2 text-sm transition-colors"
                 style={{ color: 'var(--text-tertiary)' }}
               >
-                <HiOutlinePhone className="w-4 h-4" /> +91 123 456 7890
+                <HiOutlinePhone className="w-4 h-4" /> +91 6204360389
               </a>
               <span
                 className="flex items-center gap-2 text-sm"

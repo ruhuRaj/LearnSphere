@@ -115,7 +115,7 @@ export default function Courses() {
       </section>
 
       {/* Category Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-8 mt-8">
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {categories.map((cat) => (
             <button

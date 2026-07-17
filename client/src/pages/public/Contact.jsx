@@ -36,13 +36,13 @@ export default function Contact() {
         </div>
       </section>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-20 -mt-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-20 mt-8">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Info Cards */}
           <div className="space-y-4">
             {[
-              { icon: HiOutlineMail, title: 'Email', info: 'hello@learnsphere.com', sub: 'We reply within 24 hours' },
-              { icon: HiOutlinePhone, title: 'Phone', info: '+91 123 456 7890', sub: 'Mon–Sat, 9am–6pm IST' },
+              { icon: HiOutlineMail, title: 'Email', info: 'randhirrajak9431@gmail.com', sub: 'We reply within 24 hours' },
+              { icon: HiOutlinePhone, title: 'Phone', info: '+91 6204360389', sub: 'Mon–Sat, 9am–6pm IST' },
               { icon: HiOutlineLocationMarker, title: 'Office', info: 'Ranchi, Jharkhand', sub: 'India' },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 0.1}>
