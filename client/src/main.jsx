@@ -10,7 +10,7 @@ import { I18nProvider } from './i18n/index';
 import App from './App';
 import './index.css';
 
-const GOOGLE_CLIENT_ID = '821042863823-c6mq962vk3j6u5rmi8d7ks2iqvfm0qnq.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
