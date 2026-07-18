@@ -33,7 +33,7 @@ const GRADIENTS = [
   'linear-gradient(135deg, #10b981, #059669)',
 ];
 
-const EMOJIS = ['⚛️', '🧬', '📐', '🧪', '🔬', '📊', '⚡', '⚗️', '➗', '📚', '🚀', '💡'];
+const EMOJIS = ['⚛️', '🧬', '📐', '🧪', '🔬', '📊', '⚡', '⚗️', '➗', '📚', '', '💡'];
 
 const getLessonCount = (course) => {
   const chapters = Array.isArray(course?.chapters) ? course.chapters : [];

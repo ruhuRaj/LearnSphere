@@ -53,7 +53,7 @@ const seedDemoUsers = async () => {
           ],
         },
       ]);
-      console.log('✅ Demo users seeded');
+      console.log(' Demo users seeded');
     }
   } catch (error) {
     // Ignore if already exists
@@ -78,7 +78,7 @@ const startServer = async () => {
         { title: 'text', description: 'text', tags: 'text' },
         { default_language: 'english', language_override: 'language_override' }
       );
-      console.log('✅ Course text index created with language_override=language_override');
+      console.log(' Course text index created with language_override=language_override');
     } catch (err) {
       console.warn('Could not ensure course text index:', err.message);
     }
@@ -88,19 +88,19 @@ const startServer = async () => {
       console.log(`
   ╔═══════════════════════════════════════════╗
   ║                                           ║
-  ║   🚀 LearnSphere API Server              ║
+  ║    LearnSphere API Server              ║
   ║   Running on port ${PORT}                  ║
   ║   Environment: ${process.env.NODE_ENV || 'development'}           ║
   ║                                           ║
   ║   API:  http://localhost:${PORT}/api       ║
   ║   Health: http://localhost:${PORT}/api/health ║
-  ║   Socket.IO: ✅ Connected                 ║
+  ║   Socket.IO:  Connected                 ║
   ║                                           ║
   ╚═══════════════════════════════════════════╝
       `);
     });
   } catch (error) {
-    console.error('❌ Server failed to start:', error.message);
+    console.error(' Server failed to start:', error.message);
     process.exit(1);
   }
 };

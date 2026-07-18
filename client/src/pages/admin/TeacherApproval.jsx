@@ -70,8 +70,8 @@ export default function TeacherApproval() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
           {[
             { label: 'Pending', count: teachers.filter(t => !t.isApproved && !t.rejected).length, color: '#f59e0b', icon: '⏳' },
-            { label: 'Approved', count: teachers.filter(t => t.isApproved).length, color: '#10b981', icon: '✅' },
-            { label: 'Rejected', count: teachers.filter(t => t.rejected).length, color: '#ef4444', icon: '❌' },
+            { label: 'Approved', count: teachers.filter(t => t.isApproved).length, color: '#10b981', icon: '' },
+            { label: 'Rejected', count: teachers.filter(t => t.rejected).length, color: '#ef4444', icon: '' },
           ].map(s => (
             <div key={s.label} className="glass-card" style={{ padding: '16px', borderRadius: '12px', textAlign: 'center' }}>
               <div style={{ fontSize: '24px', marginBottom: '4px' }}>{s.icon}</div>
@@ -109,7 +109,7 @@ export default function TeacherApproval() {
                       <p style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}><FiMail size={11} style={{ verticalAlign: 'middle', marginRight: '4px' }} />{t.email}</p>
                     </div>
                     <span style={{ padding: '4px 10px', borderRadius: '16px', fontSize: '11px', fontWeight: 600, background: t.isApproved ? '#10b98120' : t.rejected ? '#ef444420' : '#f59e0b20', color: t.isApproved ? '#10b981' : t.rejected ? '#ef4444' : '#f59e0b' }}>
-                      {t.isApproved ? '✅ Approved' : t.rejected ? '❌ Rejected' : '⏳ Pending'}
+                      {t.isApproved ? ' Approved' : t.rejected ? ' Rejected' : '⏳ Pending'}
                     </span>
                   </div>
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.5 }}>{t.bio}</p>

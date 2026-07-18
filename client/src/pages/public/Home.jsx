@@ -85,7 +85,7 @@ const features = [
 
 /* ── Categories Data ──────────────────────── */
 const categories = [
-  { name: 'JEE', value: 'JEE', icon: '🚀', count: '120+ Courses', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)' },
+  { name: 'JEE', value: 'JEE', icon: '', count: '120+ Courses', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)' },
   { name: 'NEET', value: 'NEET', icon: '🧬', count: '95+ Courses', gradient: 'linear-gradient(135deg, #06b6d4, #10b981)' },
   { name: 'CBSE 11', value: 'CBSE11', icon: '📘', count: '80+ Courses', gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)' },
   { name: 'CBSE 12', value: 'CBSE12', icon: '📗', count: '85+ Courses', gradient: 'linear-gradient(135deg, #ec4899, #8b5cf6)' },

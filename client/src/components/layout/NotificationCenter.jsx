@@ -44,7 +44,7 @@ export default function NotificationCenter() {
   };
 
   const typeIcons = {
-    info: '💡', success: '✅', warning: '⚠️', course: '📚',
+    info: '💡', success: '', warning: '⚠️', course: '📚',
     test: '📝', assignment: '📋', live: '🔴', achievement: '🏆', system: '⚙️',
   };
 

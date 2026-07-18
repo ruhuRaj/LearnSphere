@@ -61,7 +61,7 @@ const seedData = async () => {
       children: [students[0]._id],
     });
 
-    console.log(`✅ Created ${3 + 5 + 1 + 1} users (1 admin, 3 teachers, 5 students, 1 parent)`);
+    console.log(` Created ${3 + 5 + 1 + 1} users (1 admin, 3 teachers, 5 students, 1 parent)`);
 
     // ── Courses ────────────────────────────────
     const courses = await Course.insertMany([
@@ -188,7 +188,7 @@ const seedData = async () => {
       },
     ]);
 
-    console.log(`✅ Created ${courses.length} courses`);
+    console.log(` Created ${courses.length} courses`);
 
     // ── Forum Threads ───────────────────────
     await ForumThread.deleteMany({});
@@ -228,7 +228,7 @@ const seedData = async () => {
       },
     ]);
 
-    console.log('✅ Seeded forum threads');
+    console.log(' Seeded forum threads');
 
     // ── Summary ───────────────────────────────
     console.log('\n═══════════════════════════════════════');
@@ -243,7 +243,7 @@ const seedData = async () => {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Seed failed:', error);
+    console.error(' Seed failed:', error);
     process.exit(1);
   }
 };

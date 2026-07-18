@@ -149,7 +149,7 @@ export default function Checkout() {
       <div className="page-container" style={{ padding: '24px', maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ marginTop: '120px', textAlign: 'center' }}>
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
-            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#10b98120', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '36px' }}>✅</div>
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#10b98120', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '36px' }}></div>
           </motion.div>
           <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>Payment Successful!</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>You've been enrolled in <strong>{course.title}</strong></p>

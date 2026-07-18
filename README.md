@@ -86,7 +86,7 @@ learn-sphere/
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 - **Node.js** 20+

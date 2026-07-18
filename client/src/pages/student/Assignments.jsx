@@ -51,7 +51,7 @@ export default function Assignments() {
         <p style={{ color: 'var(--text-tertiary)', marginBottom: '24px' }}>Complete assignments to earn XP and improve your understanding</p>
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-          {[{ key: 'pending', label: '📋 Pending' }, { key: 'submitted', label: '✅ Submitted' }, { key: 'missed', label: '⚠️ Missed' }].map(t => (
+          {[{ key: 'pending', label: '📋 Pending' }, { key: 'submitted', label: ' Submitted' }, { key: 'missed', label: '⚠️ Missed' }].map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '13px', background: tab === t.key ? 'linear-gradient(135deg, #6366f1, #a855f7)' : 'var(--bg-secondary)', color: tab === t.key ? '#fff' : 'var(--text-secondary)' }}>
               {t.label}
             </button>
