@@ -6,7 +6,7 @@ export const loginUser = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const { data } = await api.post('/auth/login', credentials);
-      localStorage.setItem('token', data.token);
+      sessionStorage.setItem('token', data.token);
       return data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Login failed');
@@ -19,7 +19,7 @@ export const registerUser = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const { data } = await api.post('/auth/register', userData);
-      localStorage.setItem('token', data.token);
+      sessionStorage.setItem('token', data.token);
       return data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Registration failed');
@@ -46,7 +46,7 @@ export const loadUser = createAsyncThunk(
       const { data } = await api.get('/auth/me');
       return data;
     } catch (err) {
-      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
       return rejectWithValue('Not authenticated');
     }
   }
@@ -56,14 +56,14 @@ const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
-    token: localStorage.getItem('token'),
+    token: sessionStorage.getItem('token'),
     isAuthenticated: false,
     isLoading: false,
     error: null,
   },
   reducers: {
     logout: (state) => {
-      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;

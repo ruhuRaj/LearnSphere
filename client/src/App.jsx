@@ -1,7 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { loadUser, logout as logoutUser } from './features/authSlice';
+import { loadUser } from './features/authSlice';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import FloatingAI from './components/layout/FloatingAI';
@@ -56,21 +56,6 @@ export default function App() {
     if (token) {
       dispatch(loadUser());
     }
-  }, [dispatch, token]);
-
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (token) {
-        localStorage.removeItem('token');
-        dispatch(logoutUser());
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
   }, [dispatch, token]);
 
   const location = useLocation();

@@ -34,7 +34,7 @@ export default function Login() {
         });
 
         if (data.success) {
-          localStorage.setItem('token', data.token);
+          sessionStorage.setItem('token', data.token);
           toast.success('Welcome back!');
           window.location.href = data.user.role === 'admin' ? '/admin' : data.user.role === 'teacher' ? '/teacher' : '/student';
         }
