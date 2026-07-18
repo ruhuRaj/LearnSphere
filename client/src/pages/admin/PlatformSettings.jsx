@@ -68,7 +68,7 @@ export default function PlatformSettings() {
 
   return (
     <div className="page-container" style={{ padding: '24px', maxWidth: '900px', margin: '0 auto' }}>
-      <div style={{ marginTop: '80px' }}>
+      <div style={{ marginTop: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '1rem' }}>
           <button onClick={() => navigate('/admin')} className="btn btn-ghost btn-sm">
             <FiArrowLeft className="w-4 h-4" /> Back

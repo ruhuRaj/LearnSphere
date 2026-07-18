@@ -75,7 +75,7 @@ export default function CourseApproval() {
   });
 
   return (
-    <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
+    <div className="page-container -mt-18" style={{ background: 'var(--bg-primary)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="flex items-center justify-between gap-3 mb-4">

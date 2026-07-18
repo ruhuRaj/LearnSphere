@@ -74,7 +74,7 @@ export default function AdminDashboard() {
   const maxCat = Math.max(...courseCategories.map((c) => c.count), 1);
 
   return (
-    <div className="page-container" style={{ background: 'var(--bg-primary)' }}>
+    <div className="page-container -mt-18" style={{ background: 'var(--bg-primary)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
