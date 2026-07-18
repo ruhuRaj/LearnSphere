@@ -135,7 +135,7 @@ export default function Login() {
           </form>
 
           {/* Demo Logins */}
-          <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--border-color)' }}>
+          {/* <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--border-color)' }}>
             <p className="text-xs text-center mb-3" style={{ color: 'var(--text-tertiary)' }}>Quick Demo Login</p>
             <div className="flex gap-2">
               {['student', 'teacher', 'admin'].map((role) => (
@@ -144,7 +144,7 @@ export default function Login() {
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
 
         <p className="text-center text-sm mt-2 mb-12" style={{ color: 'var(--text-secondary)' }}>
