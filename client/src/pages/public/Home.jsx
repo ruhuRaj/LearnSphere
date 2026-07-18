@@ -85,12 +85,12 @@ const features = [
 
 /* ── Categories Data ──────────────────────── */
 const categories = [
-  { name: 'JEE', icon: '🚀', count: '120+ Courses', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)' },
-  { name: 'NEET', icon: '🧬', count: '95+ Courses', gradient: 'linear-gradient(135deg, #06b6d4, #10b981)' },
-  { name: 'CBSE 11', icon: '📘', count: '80+ Courses', gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)' },
-  { name: 'CBSE 12', icon: '📗', count: '85+ Courses', gradient: 'linear-gradient(135deg, #ec4899, #8b5cf6)' },
-  { name: 'Bihar Board', icon: '📕', count: '60+ Courses', gradient: 'linear-gradient(135deg, #14b8a6, #3b82f6)' },
-  { name: 'Jharkhand Board', icon: '📙', count: '55+ Courses', gradient: 'linear-gradient(135deg, #f43f5e, #fb923c)' },
+  { name: 'JEE', value: 'JEE', icon: '🚀', count: '120+ Courses', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)' },
+  { name: 'NEET', value: 'NEET', icon: '🧬', count: '95+ Courses', gradient: 'linear-gradient(135deg, #06b6d4, #10b981)' },
+  { name: 'CBSE 11', value: 'CBSE11', icon: '📘', count: '80+ Courses', gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)' },
+  { name: 'CBSE 12', value: 'CBSE12', icon: '📗', count: '85+ Courses', gradient: 'linear-gradient(135deg, #ec4899, #8b5cf6)' },
+  { name: 'Bihar Board', value: 'Bihar', icon: '📕', count: '60+ Courses', gradient: 'linear-gradient(135deg, #14b8a6, #3b82f6)' },
+  { name: 'Jharkhand Board', value: 'Jharkhand', icon: '📙', count: '55+ Courses', gradient: 'linear-gradient(135deg, #f43f5e, #fb923c)' },
 ];
 
 /* ── Testimonials Data ────────────────────── */
@@ -341,8 +341,8 @@ export default function Home() {
             {categories.map((cat, i) => (
               <FadeIn key={cat.name} delay={i * 0.06}>
                 <Link
-                  to={`/courses?category=${cat.name}`}
-                  className="glass-card p-0.5 text-center group cursor-pointer"
+                  to={`/courses?category=${cat.value}`}
+                  className="glass-card p-0.5 text-center group cursor-pointer hover:shadow-lg transition-all"
                 >
                   <div className="text-3xl mb-3">{cat.icon}</div>
                   <h4 className="font-semibold text-sm mb-1 font-[Outfit]" style={{ color: 'var(--text-primary)' }}>

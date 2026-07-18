@@ -106,7 +106,7 @@ export default function Login() {
               <label className="label">Email</label>
               <div className="relative">
                 <HiOutlineMail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
-                <input className="input pl-10" type="email" placeholder="you@example.com" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <input className="input pl-10" type="email" placeholder="your email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
             </div>
             <div>

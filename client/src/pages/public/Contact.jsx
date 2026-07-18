@@ -71,7 +71,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <label className="label">Email</label>
-                    <input className="input" type="email" placeholder="you@example.com" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                    <input className="input" type="email" placeholder="your email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                   </div>
                 </div>
                 <div>

@@ -174,7 +174,7 @@ export default function TeacherDashboard() {
   const [active, setActive] = useState('dashboard');
   const [collapsed, setCollapsed] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
-  const [videoForm, setVideoForm] = useState({ title: '', course: '', chapter: '', url: '', duration: 0 });
+  const [videoForm, setVideoForm] = useState({ title: '', course: '', chapter: '', url: '', duration: 'duration' });
   const [videoFile, setVideoFile] = useState(null);
   const [notesForm, setNotesForm] = useState({ title: '', course: '', chapter: '', subject: '', content: '', type: 'markdown' });
   const [notesFile, setNotesFile] = useState(null);

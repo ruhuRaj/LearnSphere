@@ -315,7 +315,7 @@ export default function Scholarship() {
                   </label>
                   <label className="input-group">
                     <span>Email</span>
-                    <input value={form.email} onChange={(e) => { setForm({ ...form, email: e.target.value }); setOtpSent(false); setOtpVerified(false); }} placeholder="you@example.com" className="input input-bordered w-full" type="email" />
+                    <input value={form.email} onChange={(e) => { setForm({ ...form, email: e.target.value }); setOtpSent(false); setOtpVerified(false); }} placeholder="your email" className="input input-bordered w-full" type="email" />
                   </label>
                   <label className="input-group">
                     <span>Phone</span>
@@ -336,7 +336,7 @@ export default function Scholarship() {
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Email verification</h3>
-                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Send OTP to verify your email before the test.</p>
+                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Verify your email before the test.</p>
                     </div>
                     <button onClick={sendOtp} disabled={submitting || !form.email} className="btn btn-secondary">
                       {otpSent ? 'Resend OTP' : 'Send OTP'}
