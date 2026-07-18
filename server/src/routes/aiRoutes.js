@@ -25,7 +25,12 @@ const proxyToAI = (endpoint) => async (req, res, next) => {
     });
     res.json(data);
   } catch (error) {
-    console.error(`[AI_PROXY] ${endpoint} failed`, error.response?.status, error.response?.data);
+    console.error("========== AI ERROR ==========");
+    console.error("STATUS:", error.response?.status);
+    console.error("DATA:", JSON.stringify(error.response?.data, null, 2));
+    console.error("HEADERS:", error.response?.headers);
+    console.error("URL:", `${AI_URL}/ai/${endpoint}`);
+    console.error("==============================");
 
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json({
