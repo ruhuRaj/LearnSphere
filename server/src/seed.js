@@ -25,7 +25,7 @@ const seedData = async () => {
     // Clear existing data
     await User.deleteMany({});
     await Course.deleteMany({});
-    console.log('🗑️  Cleared existing data');
+    console.log('  Cleared existing data');
 
     const hashedPassword = await bcrypt.hash('password123', 12);
 
@@ -232,9 +232,9 @@ const seedData = async () => {
 
     // ── Summary ───────────────────────────────
     console.log('\n═══════════════════════════════════════');
-    console.log('  🌟 LearnSphere Database Seeded!');
+    console.log('   LearnSphere Database Seeded!');
     console.log('═══════════════════════════════════════');
-    console.log('\n📧 Login Credentials (password: password123):');
+    console.log('\n Login Credentials (password: password123):');
     console.log('  Admin:   admin@learnsphere.com');
     console.log('  Teacher: rajesh@learnsphere.com');
     console.log('  Student: aarav@test.com');

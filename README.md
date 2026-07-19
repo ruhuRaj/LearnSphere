@@ -1,4 +1,4 @@
-# 🌟 LearnSphere — AI-Powered EdTech Platform
+#  LearnSphere — AI-Powered EdTech Platform
 
 > A comprehensive, full-stack educational platform with AI-driven features for JEE/NEET/Board exam preparation.
 

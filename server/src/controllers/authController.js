@@ -104,7 +104,7 @@ export const sendSignupOTP = async (req, res) => {
   });
 
   if (!emailResult) {
-    console.log(`📧 Signup OTP for ${normalizedEmail}: ${code}`);
+    console.log(` Signup OTP for ${normalizedEmail}: ${code}`);
   }
 
   res.json({ success: true, message: 'OTP sent to your email' });

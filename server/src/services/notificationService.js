@@ -82,7 +82,7 @@ export const NotificationTemplates = {
     type: 'info',
   }),
   xpEarned: (amount, reason) => ({
-    title: `+${amount} XP Earned! 🌟`,
+    title: `+${amount} XP Earned! `,
     message: reason,
     type: 'success',
   }),

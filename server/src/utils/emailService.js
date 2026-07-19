@@ -69,7 +69,7 @@ export const sendEmail = async ({ to, subject, html, text }) => {
           },
         }
       );
-      console.log('📧 Brevo email sent:', response.data?.messageId || response.data);
+      console.log(' Brevo email sent:', response.data?.messageId || response.data);
       return response.data;
     }
 
@@ -80,7 +80,7 @@ export const sendEmail = async ({ to, subject, html, text }) => {
       html,
       text,
     });
-    console.log('📧 Email sent via SMTP:', info.messageId);
+    console.log(' Email sent via SMTP:', info.messageId);
     return info;
   } catch (error) {
     console.error(' Email failed:', error.response?.data || error.message || error);
