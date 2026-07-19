@@ -187,7 +187,7 @@ export default function MockTestStudio() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 mb-6" style={{ borderRadius: '20px' }}>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-tertiary)' }}>Saved history</p>
+              <p className="text-xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-tertiary)' }}>Saved history (upto 8 attempts history)</p>
               <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Recent mock-test attempts</h3>
             </div>
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{history.length ? `${history.length} saved attempts` : 'No attempts yet'}</div>
@@ -195,7 +195,7 @@ export default function MockTestStudio() {
 
           {history.length ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {history.slice(0, 4).map((entry) => (
+              {history.slice(0, 8).map((entry) => (
                 <div key={entry._id} className="rounded-xl p-3" style={{ background: 'var(--bg-tertiary)' }}>
                   <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{entry.topic}</div>
                   <div className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{entry.difficulty} • {new Date(entry.createdAt).toLocaleDateString()}</div>

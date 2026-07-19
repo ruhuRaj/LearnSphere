@@ -65,7 +65,7 @@ const TestsSection = ({ teacherCourses, teacherTests, testForm, testFile, setTes
       {/* Create Test Form */}
       <div className="glass-card p-5 rounded-2xl border" style={{ borderColor: 'var(--border-color)' }}>
         <h2 className="text-xl font-semibold font-[Outfit] mb-2" style={{ color: 'var(--text-primary)' }}>Create Test</h2>
-        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Upload a PDF question paper or generate through AI for your students to view.</p>
+        <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Upload a PDF question paper or generate with AI for your students to view.</p>
         <div className="space-y-3">
           <input className="input" placeholder="Test title" value={testForm.title} onChange={(e) => setTestForm({ ...testForm, title: e.target.value })} />
           <select className="input" value={testForm.course} onChange={(e) => setTestForm({ ...testForm, course: e.target.value })}>
@@ -88,7 +88,7 @@ const TestsSection = ({ teacherCourses, teacherTests, testForm, testFile, setTes
           {testFile && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Selected file: {testFile.name}</p>}
           <div className="flex flex-wrap gap-2 mt-3">
             <button onClick={() => submitAction('test')} disabled={actionBusy} className="btn btn-primary btn-sm">{actionBusy ? 'Creating...' : 'Create Test'}</button>
-            <button onClick={() => submitAction('test', { generateWithAI: true })} disabled={actionBusy} className="btn btn-ghost btn-sm">{actionBusy ? 'Generating...' : 'Generate through AI'}</button>
+            <button onClick={() => submitAction('test', { generateWithAI: true })} disabled={actionBusy} className="btn btn-ghost btn-sm">{actionBusy ? 'Generating...' : 'Generate with AI'}</button>
           </div>
         </div>
       </div>
