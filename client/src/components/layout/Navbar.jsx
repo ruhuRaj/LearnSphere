@@ -14,7 +14,7 @@ import {
   HiOutlineLogout,
   HiOutlineAcademicCap,
   HiOutlineCog,
-} from 'react-icons/hi';
+} from 'react-icons/hi2';
 
 const publicLinks = [
   { name: 'Home', path: '/' },

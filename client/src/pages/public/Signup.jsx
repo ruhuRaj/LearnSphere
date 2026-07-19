@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { registerUser, clearError } from '../../features/authSlice';
-import { HiOutlineUser, HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineAcademicCap, HiOutlinePhone } from 'react-icons/hi';import api from '../../services/api';import toast from 'react-hot-toast';
+import { HiOutlineUser, HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineAcademicCap, HiOutlinePhone } from 'react-icons/hi2';import api from '../../services/api';import toast from 'react-hot-toast';
 
 export default function Signup() {
   const dispatch = useDispatch();

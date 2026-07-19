@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlinePhotograph, HiOutlineBookOpen, HiOutlineCurrencyRupee, HiOutlineTag, HiOutlineSparkles, HiArrowRight, HiArrowLeft, HiOutlineCheckCircle } from 'react-icons/hi';
+import { HiOutlinePhotograph, HiOutlineBookOpen, HiOutlineCurrencyRupee, HiOutlineTag, HiOutlineSparkles, HiArrowRight, HiArrowLeft, HiOutlineCheckCircle } from 'react-icons/hi2';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 

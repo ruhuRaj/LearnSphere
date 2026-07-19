@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { HiOutlineUsers, HiOutlineBookOpen, HiOutlinePlay, HiOutlineChatAlt2, HiOutlineChartBar, HiOutlinePlus, HiOutlineVideoCamera, HiOutlineDocumentText, HiOutlineLightningBolt, HiArrowRight } from 'react-icons/hi';
+import { HiOutlineUsers, HiOutlineBookOpen, HiOutlinePlay, HiOutlineChatAlt2, HiOutlineChartBar, HiOutlinePlus, HiOutlineVideoCamera, HiOutlineDocumentText, HiOutlineLightningBolt, HiArrowRight } from 'react-icons/hi2';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { logout } from '../../features/authSlice';

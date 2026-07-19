@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { HiOutlineUsers, HiOutlineBookOpen, HiOutlineCurrencyRupee, HiOutlineChartBar, HiOutlineTrendingUp, HiOutlineShieldCheck, HiOutlineUserGroup, HiArrowRight, HiOutlineCog, HiOutlineLogout } from 'react-icons/hi';
+import { HiOutlineUsers, HiOutlineBookOpen, HiOutlineCurrencyRupee, HiOutlineChartBar, HiOutlineTrendingUp, HiOutlineShieldCheck, HiOutlineUserGroup, HiArrowRight, HiOutlineCog, HiOutlineLogout } from 'react-icons/hi2';
 import api from '../../services/api';
 import { logout } from '../../features/authSlice';
 

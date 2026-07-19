@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
-import { HiOutlineSearch, HiOutlineStar, HiOutlineUsers, HiOutlinePlay, HiOutlineFilter } from 'react-icons/hi';
+import { HiOutlineSearch, HiOutlineStar, HiOutlineUsers, HiOutlinePlay, HiOutlineFilter } from 'react-icons/hi2';
 import api from '../../services/api';
 
 function FadeIn({ children, delay = 0, className = '' }) {

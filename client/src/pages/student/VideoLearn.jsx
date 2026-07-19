@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HiOutlinePlay, HiOutlineBookOpen, HiOutlineChatAlt2, HiOutlineDocumentText, HiOutlineCheckCircle, HiOutlineChevronDown, HiOutlineChevronRight } from 'react-icons/hi';
+import { HiOutlinePlay, HiOutlineBookOpen, HiOutlineChatAlt2, HiOutlineDocumentText, HiOutlineCheckCircle, HiOutlineChevronDown, HiOutlineChevronRight } from 'react-icons/hi2';
 import api from '../../services/api';
 
 const formatDuration = (seconds) => {

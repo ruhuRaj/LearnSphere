@@ -8,7 +8,7 @@ import {
   HiOutlineUserGroup,
   HiOutlineHeart,
   HiOutlineSparkles,
-} from 'react-icons/hi';
+} from 'react-icons/hi2';
 
 function FadeIn({ children, delay = 0, className = '' }) {
   const ref = useRef(null);

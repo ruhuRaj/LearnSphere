@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { HiOutlineSearch, HiOutlineChartBar, HiOutlineMail } from 'react-icons/hi';
+import { HiOutlineSearch, HiOutlineChartBar, HiOutlineMail } from 'react-icons/hi2';
 
 const studentsData = [
   { id: 1, name: 'Rahul Kumar', email: 'rahul@test.com', course: 'JEE Physics', progress: 78, score: 85, streak: 12, avatar: '👨‍🎓', status: 'active' },

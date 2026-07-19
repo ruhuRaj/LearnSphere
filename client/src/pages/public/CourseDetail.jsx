@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { HiOutlineStar, HiOutlineUsers, HiOutlinePlay, HiOutlineCheckCircle } from 'react-icons/hi';
+import { HiOutlineStar, HiOutlineUsers, HiOutlinePlay, HiOutlineCheckCircle } from 'react-icons/hi2';
 import api from '../../services/api';
 
 const getLessonCount = (course) => {

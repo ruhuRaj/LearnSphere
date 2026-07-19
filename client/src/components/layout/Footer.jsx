@@ -4,7 +4,7 @@ import {
   HiOutlineMail,
   HiOutlinePhone,
   HiOutlineLocationMarker,
-} from 'react-icons/hi';
+} from 'react-icons/hi2';
 import {
   FaTwitter,
   FaInstagram,

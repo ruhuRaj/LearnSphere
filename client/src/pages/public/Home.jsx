@@ -16,7 +16,7 @@ import {
   HiOutlineShieldCheck,
   HiArrowRight,
   HiOutlineCheckCircle,
-} from 'react-icons/hi';
+} from 'react-icons/hi2';
 
 /* ── Fade-in wrapper ──────────────────────── */
 function FadeIn({ children, delay = 0, className = '' }) {
