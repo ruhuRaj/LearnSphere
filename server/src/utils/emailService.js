@@ -1,14 +1,50 @@
+import axios from 'axios';
 import nodemailer from 'nodemailer';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: process.env.SMTP_PORT || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const brevoApiKey = process.env.BREVO_API_KEY;
+
+const parseFromEmail = () => {
+  const fromValue = process.env.FROM_EMAIL || 'noreply@learnsphere.com';
+  const defaultName = process.env.FROM_NAME || 'LearnSphere';
+  const emailMatch = fromValue.match(/^(?:"?([^"<]+)"?\s*)?<([^>]+)>$/);
+
+  if (emailMatch) {
+    return {
+      name: emailMatch[1]?.trim() || defaultName,
+      email: emailMatch[2].trim(),
+    };
+  }
+
+  return {
+    name: defaultName,
+    email: fromValue.trim(),
+  };
+};
+
+const sender = parseFromEmail();
+
+const transporter = brevoApiKey
+  ? null
+  : nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+const formatRecipients = (recipient) => {
+  if (Array.isArray(recipient)) {
+    return recipient.map((email) => ({ email }));
+  }
+  return recipient
+    .split(',')
+    .map((email) => email.trim())
+    .filter(Boolean)
+    .map((email) => ({ email }));
+};
 
 /**
  * Send an email
@@ -16,18 +52,38 @@ const transporter = nodemailer.createTransport({
  */
 export const sendEmail = async ({ to, subject, html, text }) => {
   try {
+    if (brevoApiKey) {
+      const response = await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender,
+          to: formatRecipients(to),
+          subject,
+          htmlContent: html,
+          textContent: text,
+        },
+        {
+          headers: {
+            'api-key': brevoApiKey,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      console.log('📧 Brevo email sent:', response.data?.messageId || response.data);
+      return response.data;
+    }
+
     const info = await transporter.sendMail({
-      from: `"LearnSphere" <${process.env.FROM_EMAIL || 'noreply@learnsphere.com'}>`,
+      from: `"${sender.name}" <${sender.email}>`,
       to,
       subject,
       html,
       text,
     });
-    console.log('📧 Email sent:', info.messageId);
+    console.log('📧 Email sent via SMTP:', info.messageId);
     return info;
   } catch (error) {
-    console.error(' Email failed:', error.message);
-    // Don't throw — email failures shouldn't crash the app
+    console.error(' Email failed:', error.response?.data || error.message || error);
     return null;
   }
 };
