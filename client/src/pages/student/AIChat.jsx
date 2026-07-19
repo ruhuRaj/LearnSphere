@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSelector } from 'react-redux';
-import { HiOutlineSparkles, HiOutlinePaperAirplane, HiOutlineBookOpen, HiOutlineAcademicCap } from 'react-icons/hi2';
+import { HiOutlineSparkles, HiOutlinePaperAirplane, HiOutlineBookOpen, HiOutlineAcademicCap } from 'react-icons/hi';
 import api from '../../services/api';
 import MessageRenderer from '../../components/common/MessageRenderer';
 

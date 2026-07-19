@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { HiOutlineAcademicCap, HiOutlineClock, HiOutlineCheckCircle, HiOutlineSparkles, HiArrowRight } from 'react-icons/hi2';
+import { HiOutlineAcademicCap, HiOutlineClock, HiOutlineCheckCircle, HiOutlineSparkles, HiArrowRight } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 

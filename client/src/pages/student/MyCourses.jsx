@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HiOutlinePlay, HiOutlineBookOpen } from 'react-icons/hi2';
+import { HiOutlinePlay, HiOutlineBookOpen } from 'react-icons/hi';
 import api from '../../services/api';
 
 export default function MyCourses() {

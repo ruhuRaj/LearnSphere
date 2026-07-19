@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { HiOutlineClock, HiOutlineCheckCircle, HiOutlineLightningBolt, HiOutlineSparkles, HiArrowRight, HiArrowLeft } from 'react-icons/hi2';
+import { HiOutlineClock, HiOutlineCheckCircle, HiOutlineLightningBolt, HiOutlineSparkles, HiArrowRight, HiArrowLeft } from 'react-icons/hi';
 import api from '../../services/api';
 
 export default function MockTests() {

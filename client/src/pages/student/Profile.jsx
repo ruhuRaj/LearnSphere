@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HiOutlineArrowLeft, HiOutlineUser, HiOutlineMail, HiOutlinePhone, HiOutlineAcademicCap, HiOutlinePencil, HiOutlineCamera, HiOutlineShieldCheck, HiOutlineLightningBolt } from 'react-icons/hi2';
+import { HiOutlineArrowLeft, HiOutlineUser, HiOutlineMail, HiOutlinePhone, HiOutlineAcademicCap, HiOutlinePencil, HiOutlineCamera, HiOutlineShieldCheck, HiOutlineLightningBolt } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { loadUser, updateProfile } from '../../features/authSlice';
 import api from '../../services/api';

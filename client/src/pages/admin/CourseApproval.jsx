@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { HiOutlineSearch, HiOutlineCheckCircle, HiOutlineX, HiOutlineEye, HiOutlineTrash, HiArrowLeft } from 'react-icons/hi2';
+import { HiOutlineSearch, HiOutlineCheckCircle, HiOutlineX, HiOutlineEye, HiOutlineTrash, HiArrowLeft } from 'react-icons/hi';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
