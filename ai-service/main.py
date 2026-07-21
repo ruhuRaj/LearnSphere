@@ -3,14 +3,16 @@ LearnSphere AI Microservice
 FastAPI-powered AI service for test generation, doubt solving, content generation, and comment moderation.
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from routers import ai_router
 from dotenv import load_dotenv
 import os
 
-# load environment variables from .env
+# load environment variables from .env before importing routers
 load_dotenv()
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routers import ai_router
+from routers import moderation
 
 app = FastAPI(
     title="LearnSphere AI Service",
@@ -34,6 +36,7 @@ app.add_middleware(
 
 # Include routes
 app.include_router(ai_router.router, prefix="/ai", tags=["AI"])
+app.include_router(moderation.router, prefix="/ai", tags=["Moderation"])
 
 @app.get("/")
 async def root():

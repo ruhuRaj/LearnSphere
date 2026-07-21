@@ -701,13 +701,18 @@ function Doubts({ courses }) {
     setError(null);
 
     try {
-      await api.post('/doubts', {
+      const { data } = await api.post('/doubts', {
         course: selectedCourseId,
         question: question.trim(),
       });
       setQuestion('');
       const response = await api.get('/doubts', { params: { course: selectedCourseId, limit: 50 } });
       setDoubts(response?.data?.doubts || []);
+      if (data?.pending) {
+        toast('Your doubt is pending review by admins');
+      } else {
+        toast.success('Doubt submitted');
+      }
     } catch (err) {
       console.error('Failed to send doubt:', err);
       setError(err.response?.data?.message || 'Unable to submit your doubt.');

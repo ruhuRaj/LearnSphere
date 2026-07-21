@@ -43,6 +43,7 @@ const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const CourseApproval = lazy(() => import('./pages/admin/CourseApproval'));
 const PlatformSettings = lazy(() => import('./pages/admin/PlatformSettings'));
 const TeacherApproval = lazy(() => import('./pages/admin/TeacherApproval'));
+const FlaggedComments = lazy(() => import('./pages/admin/FlaggedComments'));
 
 const ParentDashboard = lazy(() => import('./pages/parent/Dashboard'));
 
@@ -124,6 +125,7 @@ export default function App() {
           <Route path="/admin/courses" element={<ProtectedRoute allowedRoles={['admin']}><CourseApproval /></ProtectedRoute>} />
           <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><PlatformSettings /></ProtectedRoute>} />
           <Route path="/admin/teachers" element={<ProtectedRoute allowedRoles={['admin']}><TeacherApproval /></ProtectedRoute>} />
+          <Route path="/admin/flagged-comments" element={<ProtectedRoute allowedRoles={['admin']}><FlaggedComments /></ProtectedRoute>} />
 
           {/* Parent Routes */}
           <Route path="/parent" element={<ProtectedRoute allowedRoles={['parent']}><ParentDashboard /></ProtectedRoute>} />

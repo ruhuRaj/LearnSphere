@@ -1,5 +1,5 @@
 import express from 'express';
-import { getUsers, updateUser, approveTeacher, getAnalytics, deleteUser, getCourses, updateCourseStatus, deleteCourseAdmin, getSettings, updateSettings } from '../controllers/adminController.js';
+import { getUsers, updateUser, approveTeacher, getAnalytics, deleteUser, getCourses, updateCourseStatus, deleteCourseAdmin, getSettings, updateSettings, getFlaggedComments, approveFlaggedComment, rejectFlaggedComment } from '../controllers/adminController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -16,5 +16,8 @@ router.put('/settings', updateSettings);
 router.get('/courses', getCourses);
 router.put('/courses/:id/status', updateCourseStatus);
 router.delete('/courses/:id', deleteCourseAdmin);
+router.get('/flagged-comments', getFlaggedComments);
+router.put('/flagged-comments/:id/approve', approveFlaggedComment);
+router.put('/flagged-comments/:id/reject', rejectFlaggedComment);
 
 export default router;

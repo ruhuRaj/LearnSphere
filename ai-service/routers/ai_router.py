@@ -565,30 +565,7 @@ async def generate_content(req: ContentRequest):
     }
 
 # ── Comment Moderation ───────────────────────
-
-@router.post("/moderate-comment")
-async def moderate_comment(req: ModerationRequest):
-    """AI-powered comment moderation — detect spam, toxicity, and sentiment."""
-    text_lower = req.text.lower()
-    
-    # Simple rule-based checks (would use AI in production)
-    toxic_words = ["hate", "stupid", "idiot", "spam", "scam"]
-    is_toxic = any(word in text_lower for word in toxic_words)
-    is_spam = len(req.text) < 3 or req.text.count("http") > 2
-    
-    sentiment = "positive" if any(w in text_lower for w in ["great", "good", "amazing", "thank", "helpful"]) else "negative" if is_toxic else "neutral"
-    
-    return {
-        "success": True,
-        "moderation": {
-            "isApproved": not is_toxic and not is_spam,
-            "isToxic": is_toxic,
-            "isSpam": is_spam,
-            "sentiment": sentiment,
-            "confidence": 0.88,
-            "reason": "toxic content detected" if is_toxic else "spam detected" if is_spam else "approved",
-        }
-    }
+# The moderation endpoint is implemented in routers/moderation.py using OpenAI moderation.
 
 # ── Study Plan Generation ────────────────────
 

@@ -84,6 +84,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex gap-2">
             <Link to="/admin/users" className="btn btn-secondary btn-sm"><HiOutlineUsers className="w-4 h-4" /> Users</Link>
+            <Link to="/admin/flagged-comments" className="btn btn-secondary btn-sm">Flagged</Link>
             <Link to="/admin/courses" className="btn btn-secondary btn-sm"><HiOutlineBookOpen className="w-4 h-4" /> Courses</Link>
             <Link to="/admin/settings" className="btn btn-ghost btn-sm"><HiOutlineCog className="w-4 h-4" /></Link>
             <button

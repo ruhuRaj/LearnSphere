@@ -11,6 +11,15 @@ const doubtSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     text: String,
     role: { type: String, enum: ['teacher', 'ai'] },
+    status: { type: String, enum: ['approved', 'pending_review', 'removed'], default: 'approved' },
+    moderation: {
+      flagged: { type: Boolean, default: false },
+      isSpam: { type: Boolean, default: false },
+      isToxic: { type: Boolean, default: false },
+      toxicityScore: { type: Number, default: 0 },
+      spamScore: { type: Number, default: 0 },
+      reviewedByAdmin: { type: Boolean, default: false },
+    },
     createdAt: { type: Date, default: Date.now },
   }],
   isResolved: { type: Boolean, default: false },
@@ -60,10 +69,18 @@ const commentSchema = new mongoose.Schema({
   video: { type: mongoose.Schema.Types.ObjectId },
   course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
   text: { type: String, required: true },
-  status: { type: String, enum: ['approved', 'flagged', 'removed'], default: 'approved' },
+  status: { type: String, enum: ['approved', 'pending_review', 'flagged', 'removed'], default: 'approved' },
   sentiment: { type: String, enum: ['positive', 'neutral', 'negative', ''] },
   parentComment: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment' },
   likes: { type: Number, default: 0 },
+  moderation: {
+    flagged: { type: Boolean, default: false },
+    isSpam: { type: Boolean, default: false },
+    isToxic: { type: Boolean, default: false },
+    toxicityScore: { type: Number, default: 0 },
+    spamScore: { type: Number, default: 0 },
+    reviewedByAdmin: { type: Boolean, default: false },
+  },
 }, { timestamps: true });
 
 const paymentSchema = new mongoose.Schema({
@@ -85,3 +102,15 @@ export const Assignment = mongoose.model('Assignment', assignmentSchema);
 export const Attendance = mongoose.model('Attendance', attendanceSchema);
 export const Comment = mongoose.model('Comment', commentSchema);
 export const Payment = mongoose.model('Payment', paymentSchema);
+
+const flaggedCommentSchema = new mongoose.Schema({
+  sourceType: { type: String, enum: ['forum_reply', 'doubt_reply', 'comment'], required: true },
+  parentId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  itemId: { type: mongoose.Schema.Types.ObjectId },
+  text: { type: String },
+  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  moderation: { type: mongoose.Schema.Types.Mixed },
+  createdAt: { type: Date, default: Date.now },
+}, { timestamps: true });
+
+export const FlaggedComment = mongoose.model('FlaggedComment', flaggedCommentSchema);

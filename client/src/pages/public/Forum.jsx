@@ -38,7 +38,7 @@ export default function Forum() {
       try {
         setLoading(true);
         const { data } = await api.get('/forum', { params: { category: filter === 'all' ? '' : filter, search } });
-        setThreads(data.threads || []);
+        setThreads((data.threads || []).filter((thread) => thread.status !== 'pending_review'));
       } catch (error) {
         console.error('Failed to load forum threads', error);
         toast.error('Could not load forum threads');
@@ -86,14 +86,18 @@ export default function Forum() {
           ))}
           <div className="glass-card" style={{ padding: '16px', borderRadius: '12px', marginTop: '16px' }}>
             <textarea value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Write your reply..." rows={3} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
-            <button onClick={async () => {
+              <button onClick={async () => {
               if (!replyText.trim()) return;
               try {
                 setSubmitting(true);
                 const { data } = await api.post(`/forum/${selectedThread._id}/replies`, { content: replyText });
                 setSelectedThread(data.thread);
                 setReplyText('');
-                toast.success('Reply posted');
+                if (data.addedReplyStatus === 'pending_review') {
+                  toast(`Your reply is pending review by admins`);
+                } else {
+                  toast.success('Reply posted');
+                }
               } catch (error) {
                 toast.error(error.response?.data?.message || 'Failed to post reply');
               } finally {
@@ -126,7 +130,7 @@ export default function Forum() {
           ))}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {filtered.map((t, i) => (
+          {filtered.filter(t => t.status !== 'pending_review').map((t, i) => (
             <motion.div key={t._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} onClick={() => openThread(t)} className="glass-card" style={{ padding: '18px', borderRadius: '14px', cursor: 'pointer', borderLeft: t.isPinned ? '3px solid #f59e0b' : 'none' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
@@ -177,7 +181,11 @@ export default function Forum() {
                   setThreads(prev => [data.thread, ...prev]);
                   setShowCreate(false);
                   setNewThread({ title: '', content: '', category: 'general', tags: '' });
-                  toast.success('Thread created');
+                  if (data.thread?.status === 'pending_review') {
+                    toast('Thread submitted and is pending review by admins');
+                  } else {
+                    toast.success('Thread created');
+                  }
                 } catch (error) {
                   toast.error(error.response?.data?.message || 'Could not create thread');
                 } finally {

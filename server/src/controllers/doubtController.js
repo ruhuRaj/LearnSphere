@@ -1,7 +1,22 @@
 import mongoose from 'mongoose';
-import { Doubt } from '../models/Other.js';
+import { Doubt, FlaggedComment } from '../models/Other.js';
 import Course from '../models/Course.js';
 import User from '../models/User.js';
+import axios from 'axios';
+
+const AI_URL = process.env.AI_SERVICE_URL || process.env.AI_URL || 'http://localhost:8000';
+
+const normalizeModeration = (mod) => {
+  if (!mod || typeof mod !== 'object') return undefined;
+  return {
+    flagged: Boolean(mod.flagged || mod.isFlagged || mod.flagged === true),
+    isSpam: Boolean(mod.isSpam ?? mod.is_spam ?? mod.spam === true),
+    isToxic: Boolean(mod.isToxic ?? mod.is_toxic ?? mod.toxic === true),
+    toxicityScore: Number(mod.toxicityScore ?? mod.toxicity_score ?? 0) || 0,
+    spamScore: Number(mod.spamScore ?? mod.spam_score ?? 0) || 0,
+    reviewedByAdmin: Boolean(mod.reviewedByAdmin ?? mod.reviewed_by_admin ?? false),
+  };
+};
 
 // @desc    Get doubts (with filters)
 // @route   GET /api/doubts
@@ -55,16 +70,34 @@ export const createDoubt = async (req, res, next) => {
       }
     }
 
+    // Moderate the question text
+    let moderation = null;
+    let status = 'open';
+    try {
+      const { data } = await axios.post(`${AI_URL}/ai/moderate-comment`, { text: question.trim() }, { timeout: 5000 });
+      moderation = normalizeModeration(data?.moderation || data);
+      if (moderation?.flagged) status = 'pending_review';
+    } catch (err) {
+      moderation = null;
+      status = 'open';
+    }
+
     const doubt = await Doubt.create({
       student: req.user._id,
       course: course || undefined,
       question: question.trim(),
       topic,
       subject,
+      status,
+      moderation: moderation || undefined,
     });
 
+    if (moderation && moderation.flagged) {
+      await FlaggedComment.create({ sourceType: 'doubt_reply', parentId: doubt._id, text: question.trim(), author: req.user._id, moderation });
+    }
+
     const populated = await doubt.populate('student', 'name avatar');
-    res.status(201).json({ success: true, doubt: populated });
+    res.status(201).json({ success: true, doubt: populated, pending: moderation?.flagged || false });
   } catch (error) {
     next(error);
   }
@@ -83,11 +116,28 @@ export const replyToDoubt = async (req, res, next) => {
       }
     }
 
-    doubt.replies.push({
+    const text = req.body.text || '';
+    // Moderate reply
+    let moderation = null;
+    let replyStatus = 'approved';
+    try {
+      const { data } = await axios.post(`${AI_URL}/ai/moderate-comment`, { text }, { timeout: 5000 });
+      moderation = normalizeModeration(data?.moderation || data);
+      if (moderation?.flagged) replyStatus = 'pending_review';
+    } catch (err) {
+      moderation = null;
+      replyStatus = 'approved';
+    }
+
+    const newReply = {
       user: req.user._id,
-      text: req.body.text,
+      text,
       role: req.body.isAI ? 'ai' : req.user.role,
-    });
+      status: replyStatus,
+      moderation: moderation || undefined,
+    };
+
+    doubt.replies.push(newReply);
     doubt.status = 'answered';
 
     if (req.body.isAI) {
@@ -96,7 +146,13 @@ export const replyToDoubt = async (req, res, next) => {
 
     await doubt.save();
     const populated = await doubt.populate('replies.user', 'name avatar role');
-    res.json({ success: true, doubt: populated });
+
+    if (replyStatus === 'pending_review' && moderation) {
+      const added = doubt.replies[doubt.replies.length - 1];
+      await FlaggedComment.create({ sourceType: 'doubt_reply', parentId: doubt._id, itemId: added._id, text, author: req.user._id, moderation });
+    }
+
+    res.json({ success: true, doubt: populated, addedReplyStatus: newReply.status });
   } catch (error) {
     next(error);
   }

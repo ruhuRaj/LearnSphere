@@ -1,5 +1,7 @@
 import User from '../models/User.js';
 import Course from '../models/Course.js';
+import { FlaggedComment, Doubt, Comment } from '../models/Other.js';
+import { ForumThread } from '../models/Extra.js';
 
 // @desc    Get all users (admin)
 // @route   GET /api/admin/users
@@ -202,4 +204,129 @@ export const deleteCourseAdmin = async (req, res) => {
 
   await course.deleteOne();
   res.json({ success: true, message: 'Course deleted' });
+};
+
+// @desc Get flagged comments for admin review
+// @route GET /api/admin/flagged-comments
+export const getFlaggedComments = async (req, res) => {
+  const items = await FlaggedComment.find().sort({ createdAt: -1 }).limit(200).populate('author', 'name avatar');
+  res.json({ success: true, items });
+};
+
+// @desc Approve a flagged comment
+// @route PUT /api/admin/flagged-comments/:id/approve
+export const approveFlaggedComment = async (req, res) => {
+  const flagged = await FlaggedComment.findById(req.params.id);
+  if (!flagged) return res.status(404).json({ success: false, message: 'Flagged item not found' });
+
+  try {
+    if (flagged.sourceType === 'forum_reply') {
+      const thread = await ForumThread.findById(flagged.parentId);
+      if (thread) {
+        const reply = thread.replies.id(flagged.itemId);
+        if (reply) {
+          reply.status = 'approved';
+          reply.moderation = reply.moderation || {};
+          reply.moderation.reviewedByAdmin = true;
+          await thread.save();
+        } else if (!flagged.itemId) {
+          // thread-level flag
+          thread.status = 'approved';
+          thread.moderation = thread.moderation || {};
+          thread.moderation.reviewedByAdmin = true;
+          await thread.save();
+        }
+      }
+    } else if (flagged.sourceType === 'doubt_reply') {
+      const doubt = await Doubt.findById(flagged.parentId);
+      if (doubt) {
+        if (flagged.itemId) {
+          const reply = doubt.replies.id(flagged.itemId);
+          if (reply) {
+            reply.status = 'approved';
+            reply.moderation = reply.moderation || {};
+            reply.moderation.reviewedByAdmin = true;
+          }
+        } else {
+          // doubt-level
+          doubt.status = 'answered';
+          doubt.moderation = doubt.moderation || {};
+          doubt.moderation.reviewedByAdmin = true;
+        }
+        await doubt.save();
+      }
+    } else if (flagged.sourceType === 'comment') {
+      // top-level comment
+      const comment = await Comment.findById(flagged.parentId);
+      if (comment) {
+        comment.status = 'approved';
+        comment.moderation = comment.moderation || {};
+        comment.moderation.reviewedByAdmin = true;
+        await comment.save();
+      }
+    }
+
+    await flagged.deleteOne();
+    res.json({ success: true, message: 'Approved' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// @desc Reject (remove) a flagged comment
+// @route PUT /api/admin/flagged-comments/:id/reject
+export const rejectFlaggedComment = async (req, res) => {
+  const flagged = await FlaggedComment.findById(req.params.id);
+  if (!flagged) return res.status(404).json({ success: false, message: 'Flagged item not found' });
+
+  try {
+    if (flagged.sourceType === 'forum_reply') {
+      const thread = await ForumThread.findById(flagged.parentId);
+      if (thread) {
+        if (flagged.itemId) {
+          const reply = thread.replies.id(flagged.itemId);
+          if (reply) {
+            reply.status = 'removed';
+            reply.moderation = reply.moderation || {};
+            reply.moderation.reviewedByAdmin = true;
+          }
+        } else {
+          thread.status = 'removed';
+          thread.moderation = thread.moderation || {};
+          thread.moderation.reviewedByAdmin = true;
+        }
+        await thread.save();
+      }
+    } else if (flagged.sourceType === 'doubt_reply') {
+      const doubt = await Doubt.findById(flagged.parentId);
+      if (doubt) {
+        if (flagged.itemId) {
+          const reply = doubt.replies.id(flagged.itemId);
+          if (reply) {
+            reply.status = 'removed';
+            reply.moderation = reply.moderation || {};
+            reply.moderation.reviewedByAdmin = true;
+          }
+        } else {
+          doubt.status = 'resolved';
+          doubt.moderation = doubt.moderation || {};
+          doubt.moderation.reviewedByAdmin = true;
+        }
+        await doubt.save();
+      }
+    } else if (flagged.sourceType === 'comment') {
+      const comment = await Comment.findById(flagged.parentId);
+      if (comment) {
+        comment.status = 'removed';
+        comment.moderation = comment.moderation || {};
+        comment.moderation.reviewedByAdmin = true;
+        await comment.save();
+      }
+    }
+
+    await flagged.deleteOne();
+    res.json({ success: true, message: 'Rejected and removed' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
