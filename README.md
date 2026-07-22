@@ -120,21 +120,7 @@ cp server/.env.example server/.env
 # Optional: GOOGLE_CLIENT_ID, RAZORPAY_KEY, OPENAI_API_KEY
 ```
 
-### 3. Seed Database (Optional)
-
-```bash
-cd server && npm run seed
-```
-
-This creates demo users:
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@learnsphere.com | password123 |
-| Teacher | rajesh@learnsphere.com | password123 |
-| Student | aarav@test.com | password123 |
-| Parent | parent@test.com | password123 |
-
-### 4. Start Development
+### 3. Start Development
 
 ```bash
 # Terminal 1 — Backend
@@ -147,7 +133,7 @@ cd client && npm run dev
 cd ai-service && uvicorn main:app --reload --port 8000
 ```
 
-### 5. Using Docker (Alternative)
+### 4. Using Docker (Alternative)
 
 ```bash
 docker-compose up --build
