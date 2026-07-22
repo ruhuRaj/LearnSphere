@@ -55,6 +55,19 @@ export const register = async (req, res) => {
     isApproved: role !== 'teacher',
   });
 
+  // Do not issue an auth token for teachers until approved by an admin.
+  if (user.role === 'teacher') {
+    return res.status(201).json({
+      success: true,
+      message: 'Account created. Awaiting admin approval.',
+      user: {
+        id: user._id, name: user.name, email: user.email,
+        role: user.role, avatar: user.avatar, status: user.status,
+        xp: user.xp, level: user.level, streak: user.streak,
+      },
+    });
+  }
+
   const token = user.generateToken();
 
   res.status(201).json({
@@ -158,6 +171,11 @@ export const login = async (req, res) => {
 
   if (user.status === 'suspended' || user.status === 'hold') {
     return res.status(403).json({ success: false, message: 'Account suspended or on hold. Contact support.' });
+  }
+
+  // Block teacher accounts that are not yet approved by admin
+  if (user.role === 'teacher' && !user.isApproved) {
+    return res.status(403).json({ success: false, message: 'Teacher account pending admin approval.' });
   }
 
   // Update streak
@@ -299,6 +317,11 @@ export const googleAuth = async (req, res) => {
       success: false,
       message: 'No account found for this Google email. Please create an account first, then use Google to sign in.',
     });
+  }
+
+  // Prevent Google-auth sign in for teachers who are not approved yet
+  if (user.role === 'teacher' && !user.isApproved) {
+    return res.status(403).json({ success: false, message: 'Teacher account pending admin approval.' });
   }
 
   if (!user.googleId) {
